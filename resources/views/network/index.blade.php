@@ -27,6 +27,24 @@
                 </div>
             </section>
 
+            @if(auth()->user()->hasRole('program_manager') && !$selectedPartner)
+                <section class="rounded-2xl border border-indigo-100 bg-gradient-to-r from-indigo-50 to-violet-50 p-5 sm:p-6">
+                    <div>
+                        <p class="text-sm font-black text-indigo-900">Explore any partner's team</p>
+                        <p class="mt-1 max-w-3xl text-sm leading-6 text-indigo-800">Your business can see every affiliate in its programs. Click <strong>View team</strong> on any partner below to make that partner the root of the tree and see everyone they have recruited.</p>
+                    </div>
+                </section>
+            @elseif($selectedPartner)
+                <section class="flex flex-col gap-4 rounded-2xl border border-violet-100 bg-violet-50 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+                    <div>
+                        <p class="text-xs font-black uppercase tracking-widest text-violet-600">Viewing partner team</p>
+                        <h3 class="mt-1 text-lg font-black text-gray-900">{{ $selectedPartner->user?->name ?? 'Unknown partner' }}</h3>
+                        <p class="mt-1 text-sm text-gray-600">This partner is now the root of the recruitment tree.</p>
+                    </div>
+                    <a href="{{ route('network.index') }}" class="inline-flex w-fit rounded-xl bg-white px-4 py-2.5 text-sm font-black text-gray-700 shadow-sm ring-1 ring-inset ring-gray-200 hover:bg-gray-50">← Show all partners</a>
+                </section>
+            @endif
+
             <section class="rounded-2xl border border-violet-100 bg-gradient-to-r from-violet-50 to-indigo-50 p-5 sm:p-6">
                 <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                     <div>
