@@ -3,21 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Partner Dashboard</title>
+    <title>Partner Dashboard · LAMI AI</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="min-h-screen bg-slate-50 text-slate-900">
 <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
     <header class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-            <p class="text-sm font-semibold uppercase tracking-wider text-blue-600">LAMI AI Partners</p>
-            <h1 class="mt-1 text-3xl font-bold tracking-tight sm:text-4xl">Partner Dashboard</h1>
-            <p class="mt-2 text-slate-600">Welcome back, {{ auth()->user()->name }}.</p>
-        </div>
-        <div class="flex flex-wrap gap-2">
-            <a href="{{ route('partner.payouts.index') }}" class="rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-slate-700">Payouts</a>
-            <a href="{{ route('profile.edit') }}" class="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold shadow-sm hover:bg-slate-50">My Profile</a>
-        </div>
+        <div><p class="text-sm font-semibold uppercase tracking-wider text-blue-600">LAMI AI Partners</p><h1 class="mt-1 text-3xl font-bold tracking-tight sm:text-4xl">Partner Dashboard</h1><p class="mt-2 text-slate-600">Welcome back, {{ auth()->user()->name }}.</p></div>
+        <div class="flex flex-wrap gap-2"><a href="{{ route('partner.marketplace.index') }}" class="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700">Find Programs</a><a href="{{ route('partner.payouts.index') }}" class="rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-slate-700">Payouts</a><a href="{{ route('profile.edit') }}" class="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold shadow-sm hover:bg-slate-50">My Profile</a></div>
     </header>
 
     <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -29,13 +22,7 @@
 
     <div class="mt-8 space-y-6">
         @forelse($programStats as $programStat)
-            @php
-                $program = $programStat['program'];
-                $partner = $programStat['partner'];
-                $rules = $programStat['program']->commissionRules->where('status', true)->where('event', 'sale');
-                $level1Rule = $rules->where('level', 1)->sortByDesc('priority')->first();
-                $level2Rule = $rules->where('level', 2)->sortByDesc('priority')->first();
-            @endphp
+            @php $program = $programStat['program']; $partner = $programStat['partner']; $rules = $programStat['program']->commissionRules->where('status', true)->where('event', 'sale'); $level1Rule = $rules->where('level', 1)->sortByDesc('priority')->first(); $level2Rule = $rules->where('level', 2)->sortByDesc('priority')->first(); @endphp
             <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                 <div class="border-b border-slate-200 bg-gradient-to-r from-slate-900 to-slate-800 px-6 py-6 text-white sm:px-8"><div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"><div><p class="text-sm text-slate-300">Partnership Program</p><h2 class="mt-1 text-2xl font-bold">{{ $program->name }}</h2><p class="mt-2 text-sm text-slate-300">Partner code: <span class="font-mono font-semibold text-white">{{ $partner->partner_code }}</span></p></div><span class="w-fit rounded-full bg-emerald-500/20 px-3 py-1 text-sm font-semibold text-emerald-200">Active Partner</span></div></div>
                 <div class="p-6 sm:p-8">
@@ -47,7 +34,7 @@
                 </div>
             </section>
         @empty
-            <section class="rounded-2xl border border-slate-200 bg-white p-10 text-center shadow-sm"><h2 class="text-2xl font-bold">No active partnership yet</h2><p class="mx-auto mt-2 max-w-lg text-slate-600">Apply to an available partnership program to get your unique referral links and start earning.</p><a href="{{ route('partner.apply') }}" class="mt-6 inline-flex rounded-xl bg-slate-900 px-6 py-3 font-semibold text-white hover:bg-slate-700">Browse Programs</a></section>
+            <section class="rounded-2xl border border-slate-200 bg-white p-10 text-center shadow-sm"><h2 class="text-2xl font-bold">Find your next affiliate opportunity</h2><p class="mx-auto mt-2 max-w-lg text-slate-600">Browse active businesses, compare commission rates and join programs that match your audience.</p><a href="{{ route('partner.marketplace.index') }}" class="mt-6 inline-flex rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white hover:bg-blue-700">Explore Affiliate Programs →</a></section>
         @endforelse
     </div>
 </div>
