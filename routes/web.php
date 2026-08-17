@@ -114,7 +114,27 @@ Route::get('/', function () {
     return view('home', compact('programs'));
 });
 
-Route::get('/dashboard', fn () => view('dashboard'))->middleware(['auth', 'verified'])->name('dashboard');
+Route::get('/dashboard', function () {
+    $user = request()->user();
+
+    // Use the most privileged role first in case a user has multiple roles.
+    if ($user->hasRole('super_admin')) {
+        return redirect()->route('admin');
+    }
+
+    if ($user->hasRole('program_manager')) {
+        return redirect()->route('business.dashboard');
+    }
+
+    if ($user->hasRole('partner')) {
+        return redirect()->route('partner.dashboard');
+    }
+
+    // Authenticated users without a platform role (for example customers)
+    // should return to the public storefront rather than see a blank dashboard.
+    return redirect()->route('home');
+})->middleware(['auth', 'verified'])->name('dashboard');
+
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
