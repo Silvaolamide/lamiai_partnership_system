@@ -19,7 +19,7 @@ use App\Http\Controllers\Admin\CommissionController;
 use App\Http\Controllers\Admin\PayoutController as AdminPayoutController;
 use App\Models\PartnershipProgram;
 
-Route::middleware(['auth'])->group(function () {
+Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/partner/dashboard', [PartnerDashboardController::class, 'index'])->name('partner.dashboard');
     Route::get('/partner/programs', [PartnerMarketplaceController::class, 'index'])->name('partner.marketplace.index');
     Route::get('/partner/programs/{program}', [PartnerMarketplaceController::class, 'show'])->name('partner.marketplace.show');
