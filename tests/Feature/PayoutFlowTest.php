@@ -9,7 +9,6 @@ use App\Models\Product;
 use App\Models\ProgramPartner;
 use App\Models\Payout;
 use App\Models\User;
-use App\Services\CommissionService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -59,6 +58,17 @@ function payableCommission(ProgramPartner $partner, float $amount = 4000): Commi
     $product = payoutProduct();
     $program->products()->attach($product->id);
 
+    $rule = CommissionRule::create([
+        'program_id' => $program->id,
+        'product_id' => $product->id,
+        'event' => 'sale',
+        'level' => 1,
+        'commission_type' => 'percentage',
+        'value' => 20,
+        'status' => true,
+        'priority' => 1,
+    ]);
+
     $order = Order::create([
         'order_number' => 'PAY-ORDER-' . uniqid(),
         'customer_id' => $customer->id,
@@ -82,22 +92,20 @@ function payableCommission(ProgramPartner $partner, float $amount = 4000): Commi
         'total' => 20000,
     ]);
 
-    $commission = Commission::create([
+    return Commission::create([
         'program_id' => $program->id,
         'partner_id' => $partner->id,
         'order_id' => $order->id,
-        'order_item_id' => null,
+        'source_partner_id' => null,
+        'rule_id' => $rule->id,
         'level' => 1,
         'commission_type' => 'percentage',
         'rate' => 20,
         'base_amount' => 20000,
         'commission_amount' => $amount,
-        'currency' => 'NGN',
         'status' => 'payable',
         'available_at' => now(),
     ]);
-
-    return $commission;
 }
 
 test('partner can have a payout containing payable commissions', function () {
@@ -150,7 +158,7 @@ test('payout cannot contain a commission already attached to another active payo
         'requested_at' => now(),
     ]);
 
-    $this->expectException(\Throwable::class);
+    $this->expectException(\Illuminate\Database\QueryException::class);
     $second->commissions()->attach($commission->id);
 });
 
