@@ -47,7 +47,7 @@ class RegisteredUserController extends Controller
         Auth::login($user);
 
         if ($businessIntent) {
-            return redirect()->route('business.onboarding');
+            return redirect()->route('business.pending');
         }
 
         return redirect(route('dashboard', absolute: false));
