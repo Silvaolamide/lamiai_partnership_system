@@ -76,7 +76,7 @@ Route::middleware(['auth', 'role:super_admin'])->prefix('admin')->group(function
     Route::get('/programs/create', [PartnershipProgramController::class, 'create'])->name('admin.programs.create');
     Route::post('/programs', [PartnershipProgramController::class, 'store'])->name('admin.programs.store');
     Route::get('/programs/{program}/edit', [PartnershipProgramController::class, 'edit'])->name('admin.programs.edit');
-    Route::put('/admin/programs/{program}', [PartnershipProgramController::class, 'update'])->name('admin.programs.update');
+    Route::put('/programs/{program}', [PartnershipProgramController::class, 'update'])->name('admin.programs.update');
     Route::get('/products', [ProductController::class, 'index'])->name('admin.products.index');
     Route::get('/products/create', [ProductController::class, 'create'])->name('admin.products.create');
     Route::post('/products', [ProductController::class, 'store'])->name('admin.products.store');
