@@ -76,7 +76,7 @@ Route::middleware(['auth', 'role:super_admin'])->prefix('admin')->group(function
     Route::get('/programs/create', [PartnershipProgramController::class, 'create'])->name('admin.programs.create');
     Route::post('/programs', [PartnershipProgramController::class, 'store'])->name('admin.programs.store');
     Route::get('/programs/{program}/edit', [PartnershipProgramController::class, 'edit'])->name('admin.programs.edit');
-    Route::put('/programs/{program}', [PartnershipProgramController::class, 'update'])->name('admin.programs.update');
+    Route::put('/admin/programs/{program}', [PartnershipProgramController::class, 'update'])->name('admin.programs.update');
     Route::get('/products', [ProductController::class, 'index'])->name('admin.products.index');
     Route::get('/products/create', [ProductController::class, 'create'])->name('admin.products.create');
     Route::post('/products', [ProductController::class, 'store'])->name('admin.products.store');
@@ -112,7 +112,7 @@ Route::post('/partner/apply', [PartnerController::class, 'store'])->name('partne
 Route::get('/', function () {
     $programs = PartnershipProgram::query()->where('status', 'active')->with(['commissionRules' => fn ($query) => $query->where('status', true)->orderBy('priority')->orderBy('level')])->latest()->limit(6)->get();
     return view('home', compact('programs'));
-});
+})->name('home');
 
 Route::get('/dashboard', function () {
     $user = request()->user();
