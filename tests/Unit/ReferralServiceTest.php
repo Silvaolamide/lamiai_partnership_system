@@ -20,10 +20,9 @@ class ReferralServiceTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        
+
         $this->referralService = app(ReferralService::class);
 
-        // Create partnership program
         $this->program = PartnershipProgram::create([
             'name' => 'Test Program',
             'slug' => 'test-program',
@@ -34,12 +33,8 @@ class ReferralServiceTest extends TestCase
         ]);
     }
 
-    /**
-     * Test valid referral code processing
-     */
     public function test_valid_referral_code_is_stored()
     {
-        // Create partner
         $partner = User::factory()->create();
         $programPartner = ProgramPartner::create([
             'program_id' => $this->program->id,
@@ -49,21 +44,17 @@ class ReferralServiceTest extends TestCase
             'joined_at' => now(),
         ]);
 
-        // Process referral code
         $request = Request::create('/product/test?ref=VALIDCODE');
         $result = $this->referralService->processReferralCode($request, $this->program->id);
 
         $this->assertTrue($result);
         $this->assertTrue($this->referralService->hasReferral());
-        
+
         $referral = $this->referralService->getReferral();
         $this->assertEquals($programPartner->id, $referral['program_partner_id']);
         $this->assertEquals($this->program->id, $referral['program_id']);
     }
 
-    /**
-     * Test invalid referral code returns error
-     */
     public function test_invalid_referral_code_returns_error()
     {
         $request = Request::create('/product/test?ref=INVALIDCODE');
@@ -75,12 +66,8 @@ class ReferralServiceTest extends TestCase
         $this->assertFalse($this->referralService->hasReferral());
     }
 
-    /**
-     * Test inactive partner code returns error
-     */
     public function test_inactive_partner_code_returns_error()
     {
-        // Create inactive partner
         $partner = User::factory()->create();
         ProgramPartner::create([
             'program_id' => $this->program->id,
@@ -97,9 +84,6 @@ class ReferralServiceTest extends TestCase
         $this->assertArrayHasKey('error', $result);
     }
 
-    /**
-     * Test missing ref parameter returns false
-     */
     public function test_missing_ref_parameter_returns_false()
     {
         $request = Request::create('/product/test');
@@ -108,12 +92,8 @@ class ReferralServiceTest extends TestCase
         $this->assertFalse($result);
     }
 
-    /**
-     * Test referral code from different program rejected
-     */
     public function test_referral_code_from_different_program_rejected()
     {
-        // Create different program
         $otherProgram = PartnershipProgram::create([
             'name' => 'Other Program',
             'slug' => 'other-program',
@@ -123,7 +103,6 @@ class ReferralServiceTest extends TestCase
             'minimum_payout' => 5000,
         ]);
 
-        // Create partner in other program
         $partner = User::factory()->create();
         ProgramPartner::create([
             'program_id' => $otherProgram->id,
@@ -133,7 +112,6 @@ class ReferralServiceTest extends TestCase
             'joined_at' => now(),
         ]);
 
-        // Try to use in different program
         $request = Request::create('/product/test?ref=OTHERCODE');
         $result = $this->referralService->processReferralCode($request, $this->program->id);
 
@@ -141,15 +119,11 @@ class ReferralServiceTest extends TestCase
         $this->assertArrayHasKey('error', $result);
     }
 
-    /**
-     * Test self-referral prevention
-     */
     public function test_self_referral_is_prevented()
     {
         $user = User::factory()->create();
-        
-        // Create partner with this user
-        $programPartner = ProgramPartner::create([
+
+        ProgramPartner::create([
             'program_id' => $this->program->id,
             'user_id' => $user->id,
             'partner_code' => 'SELFREF',
@@ -157,7 +131,6 @@ class ReferralServiceTest extends TestCase
             'joined_at' => now(),
         ]);
 
-        // Try to use own code (exclude self)
         $request = Request::create('/product/test?ref=SELFREF');
         $result = $this->referralService->processReferralCode($request, $this->program->id, $user->id);
 
@@ -166,23 +139,26 @@ class ReferralServiceTest extends TestCase
         $this->assertStringContainsString('own', strtolower($result['error']));
     }
 
-    /**
-     * Test referral clearing
-     */
     public function test_referral_can_be_cleared()
     {
-        // Store referral
-        $this->referralService->storeReferral(123, 456);
+        // A stored referral must reference a real active partner/program so
+        // hasReferral() can validate the attribution before it is cleared.
+        $partner = User::factory()->create();
+        $programPartner = ProgramPartner::create([
+            'program_id' => $this->program->id,
+            'user_id' => $partner->id,
+            'partner_code' => 'CLEARTEST',
+            'status' => 'active',
+            'joined_at' => now(),
+        ]);
+
+        $this->referralService->storeReferral($programPartner->id, $this->program->id);
         $this->assertTrue($this->referralService->hasReferral());
 
-        // Clear it
         $this->referralService->clearReferral();
         $this->assertFalse($this->referralService->hasReferral());
     }
 
-    /**
-     * Test getting stored referral partner
-     */
     public function test_get_program_partner_from_referral()
     {
         $partner = User::factory()->create();
@@ -194,7 +170,6 @@ class ReferralServiceTest extends TestCase
             'joined_at' => now(),
         ]);
 
-        // Store and retrieve
         $this->referralService->storeReferral($programPartner->id, $this->program->id);
         $retrieved = $this->referralService->getProgramPartner();
 
@@ -203,9 +178,6 @@ class ReferralServiceTest extends TestCase
         $this->assertEquals($partner->id, $retrieved->user_id);
     }
 
-    /**
-     * Test generating referral links
-     */
     public function test_referral_link_generation()
     {
         $partner = User::factory()->create();
@@ -218,7 +190,7 @@ class ReferralServiceTest extends TestCase
         ]);
 
         $link = $this->referralService->generateReferralLink($programPartner, '/product/ai-video');
-        
+
         $this->assertStringContainsString('/product/ai-video', $link);
         $this->assertStringContainsString('ref=LINKTEST', $link);
     }
