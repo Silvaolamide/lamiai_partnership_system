@@ -11,6 +11,10 @@ class PartnershipProgram extends Model
         'attribution_window_days', 'minimum_payout', 'settings',
     ];
 
+    protected $casts = [
+        'settings' => 'array',
+    ];
+
     public function owner()
     {
         return $this->belongsTo(User::class, 'owner_id');
