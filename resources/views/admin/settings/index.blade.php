@@ -2,7 +2,7 @@
     <x-slot name="header">
         <div>
             <h2 class="font-semibold text-xl text-gray-800 leading-tight">Platform Settings</h2>
-            <p class="text-sm text-gray-500 mt-1">Control approvals and when sale proceeds become eligible for payout.</p>
+            <p class="text-sm text-gray-500 mt-1">Control approvals, platform charges and when sale proceeds become eligible for payout.</p>
         </div>
     </x-slot>
 
@@ -29,6 +29,20 @@
                             <small class="block text-gray-500 mt-1">When OFF, email verification alone can satisfy the platform requirement unless the business requires its own approval.</small>
                         </span>
                     </label>
+                </div>
+
+                <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+                    <h3 class="text-lg font-black text-gray-900">Platform admin charge</h3>
+                    <p class="text-sm text-gray-500 mt-1 max-w-2xl">Set the percentage the platform keeps from every paid sale. The charge is calculated from the gross order value and deducted from the business payout after partner and recruiter commissions.</p>
+
+                    <div class="mt-6 max-w-sm">
+                        <label class="block text-sm font-bold text-gray-700">Admin charge (%)</label>
+                        <div class="relative mt-2">
+                            <input type="number" min="0" max="100" step="0.01" name="admin_charge_percent" value="{{ old('admin_charge_percent', $adminChargePercent) }}" class="w-full rounded-xl border-gray-300 pr-10 focus:border-violet-500 focus:ring-violet-500">
+                            <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold">%</span>
+                        </div>
+                        <p class="mt-2 text-xs text-gray-400">Example: 5% on a ₦100,000 sale = ₦5,000 platform charge. Maximum: 100%.</p>
+                    </div>
                 </div>
 
                 <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
