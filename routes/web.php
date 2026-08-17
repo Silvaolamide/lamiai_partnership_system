@@ -36,7 +36,7 @@ Route::middleware(['auth', 'role:super_admin'])->prefix('admin')->group(function
     Route::patch('/commissions/{commission}/mark-payable', [CommissionController::class, 'markPayable'])->name('admin.commissions.mark-payable');
     Route::patch('/commissions/{commission}/reverse', [CommissionController::class, 'reverse'])->name('admin.commissions.reverse');
     Route::post('/commissions/bulk-approve', [CommissionController::class, 'bulkApprove'])->name('admin.commissions.bulk-approve');
-    Route::post('/commissions/bulk-mark-payable', [CommissionController::class, 'bulkMarkPayable'])->name('admin.commissions.bulk-mark-payable');
+    Route::post('/commissions/bulk-mark-payable', [CommissionController::class, 'bulk-mark-payable']);
 
     Route::get('/payouts', [AdminPayoutController::class, 'index'])->name('admin.payouts.index');
     Route::get('/payouts/{payout}', [AdminPayoutController::class, 'show'])->name('admin.payouts.show');
@@ -68,7 +68,7 @@ Route::middleware('auth')->group(function () {
 });
 
 Route::middleware(['auth', 'role:super_admin'])->group(function () {
-    Route::get('/admin', fn () => view('admin.dashboard'));
+    Route::get('/admin', fn () => view('admin.dashboard'))->name('admin');
 });
 
 Route::get('/admin/programs', [PartnershipProgramController::class, 'index'])->name('admin.programs.index');
