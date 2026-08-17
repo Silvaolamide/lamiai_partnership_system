@@ -20,18 +20,26 @@ class CommissionService
         return DB::transaction(function () use ($order) {
             if ($order->commissions()->exists()) {
                 return [
+                    'success' => true,
                     'status' => 'already_exists',
                     'message' => 'Commissions already generated for this order',
-                    'commissions' => $order->commissions()->get(),
+                    'order_id' => $order->id,
+                    'commissions_generated' => 0,
+                    'commissions' => [],
+                    'total_amount' => 0,
+                    'total_commission' => 0,
                 ];
             }
 
             if (!$order->program_id || !$order->partner_id) {
                 return [
+                    'success' => true,
                     'status' => 'no_partner',
                     'message' => 'No attributed partner/program; no partner commissions generated.',
+                    'order_id' => $order->id,
                     'commissions_generated' => 0,
                     'commissions' => [],
+                    'total_amount' => 0,
                     'total_commission' => 0,
                 ];
             }
@@ -49,12 +57,19 @@ class CommissionService
                 $this->generateHierarchyCommissions($order)
             );
 
+            $totalAmount = round(
+                collect($commissions)->sum(fn ($commission) => (float) $commission->commission_amount),
+                2
+            );
+
             return [
+                'success' => true,
                 'status' => 'success',
                 'order_id' => $order->id,
                 'commissions_generated' => count($commissions),
                 'commissions' => $commissions,
-                'total_commission' => collect($commissions)->sum(fn ($commission) => (float) $commission->commission_amount),
+                'total_amount' => $totalAmount,
+                'total_commission' => $totalAmount,
             ];
         });
     }
@@ -189,7 +204,7 @@ class CommissionService
     public function getTotalCommissionAmount(ProgramPartner $partner)
     {
         return (float) Commission::where('partner_id', $partner->id)
-            ->whereIn('status', ['available', 'paid', 'pending'])
+            ->whereIn('status', ['available', 'approved', 'payable', 'paid', 'pending', 'reversed'])
             ->sum('commission_amount');
     }
 
@@ -197,18 +212,25 @@ class CommissionService
     {
         $pending = $this->getPendingCommissionAmount($partner);
         $paid = $this->getPaidCommissionAmount($partner);
+        $reversed = (float) Commission::where('partner_id', $partner->id)
+            ->where('status', 'reversed')
+            ->sum('commission_amount');
         $total = $this->getTotalCommissionAmount($partner);
 
         return [
             'pending' => $pending,
             'paid' => $paid,
             'available' => $pending,
+            'reversed' => $reversed,
             'total' => $total,
             'pending_count' => Commission::where('partner_id', $partner->id)
                 ->where('status', 'available')
                 ->count(),
             'paid_count' => Commission::where('partner_id', $partner->id)
                 ->where('status', 'paid')
+                ->count(),
+            'reversed_count' => Commission::where('partner_id', $partner->id)
+                ->where('status', 'reversed')
                 ->count(),
         ];
     }
