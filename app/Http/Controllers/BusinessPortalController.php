@@ -62,11 +62,16 @@ class BusinessPortalController extends Controller
             'commission_rules.*.level' => ['required', 'integer', 'min:1'],
             'commission_rules.*.value' => ['required', 'numeric', 'min:0', 'max:100'],
         ]);
+
+        $settings = $program->settings ?? [];
+        $settings['partner_business_approval_required'] = $request->boolean('partner_business_approval_required');
+
         $program->update([
             'name' => $data['name'], 'description' => $data['description'] ?? null,
             'status' => $data['status'], 'attribution_window_days' => $data['attribution_window_days'],
-            'minimum_payout' => $data['minimum_payout'],
+            'minimum_payout' => $data['minimum_payout'], 'settings' => $settings,
         ]);
+
         $ownedProductIds = Product::where('owner_id', $this->owner($request))->pluck('id');
         $program->products()->sync(collect($data['products'] ?? [])->intersect($ownedProductIds)->values());
         $program->commissionRules()->delete();
@@ -76,6 +81,7 @@ class BusinessPortalController extends Controller
                 'commission_type' => 'percentage', 'value' => $rule['value'], 'status' => true, 'priority' => 1,
             ]);
         }
+
         return redirect()->route('business.programs.index')->with('success', 'Affiliate program updated successfully.');
     }
 
