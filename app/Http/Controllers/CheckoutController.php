@@ -98,7 +98,11 @@ class CheckoutController extends Controller
         $order = Order::with(['items', 'items.product', 'partner.user', 'program'])
             ->findOrFail($orderId);
 
-        $this->authorize('view', $order);
+        // Use the registered OrderPolicy, but explicitly abort here so an
+        // unauthorized customer receives the expected HTTP 403 response.
+        if (!Auth::user()->can('view', $order)) {
+            abort(403);
+        }
 
         return view('checkout.show', compact('order'));
     }
@@ -267,7 +271,9 @@ class CheckoutController extends Controller
         $order = Order::with(['items', 'items.product', 'partner.user', 'program', 'commissions'])
             ->findOrFail($orderId);
 
-        $this->authorize('view', $order);
+        if (!Auth::user()->can('view', $order)) {
+            abort(403);
+        }
 
         return view('orders.success', compact('order'));
     }
