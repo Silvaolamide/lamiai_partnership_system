@@ -2,6 +2,7 @@
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PartnershipProgramController;
 use App\Http\Controllers\BusinessOnboardingController;
+use App\Http\Controllers\BusinessDashboardController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProductShowController;
@@ -21,6 +22,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/partner/payouts', [PayoutController::class, 'index'])->name('partner.payouts.index');
     Route::post('/partner/payouts', [PayoutController::class, 'store'])->name('partner.payouts.store');
 
+    Route::get('/business/dashboard', [BusinessDashboardController::class, 'index'])->name('business.dashboard');
     Route::get('/business/onboarding/{step}', [BusinessOnboardingController::class, 'show'])->name('business.onboarding');
     Route::post('/business/onboarding/{step}', [BusinessOnboardingController::class, 'store'])->name('business.onboarding.store');
 });
@@ -41,7 +43,7 @@ Route::middleware(['auth', 'role:super_admin'])->prefix('admin')->group(function
     Route::get('/products/create', [ProductController::class, 'create'])->name('admin.products.create');
     Route::post('/products', [ProductController::class, 'store'])->name('admin.products.store');
     Route::get('/products/{product}/edit', [ProductController::class, 'edit'])->name('admin.products.edit');
-    Route::put('/products/{product}', [ProductController::class, 'update'])->name('admin.products.update');
+    Route::put('/admin/products/{product}', [ProductController::class, 'update'])->name('admin.products.update');
     Route::get('/orders', [OrderController::class, 'index'])->name('admin.orders.index');
     Route::get('/orders/{order}', [OrderController::class, 'show'])->name('admin.orders.show');
     Route::patch('/orders/{order}/mark-paid', [OrderController::class, 'markPaid'])->name('admin.orders.mark-paid');
