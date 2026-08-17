@@ -15,29 +15,35 @@ class ProductShowController extends Controller
         $this->referralService = $referralService;
     }
 
-    /**
-     * Display a product with referral code handling.
-     * 
-     * @param Request $request
-     * @param string $slug
-     * @return \Illuminate\View\View
-     */
     public function show(Request $request, $slug)
     {
         $product = Product::where('slug', $slug)
             ->where('status', 'active')
+            ->with(['partnershipPrograms' => function ($query) {
+                $query->where('status', 'active');
+            }])
             ->firstOrFail();
 
-        // Process referral code from URL
         $referralProcessed = false;
         $referralError = null;
         $referringPartner = null;
 
         $result = $this->referralService->processReferralCode($request);
-        
+
         if ($result === true) {
-            $referralProcessed = true;
-            $referringPartner = $this->referralService->getProgramPartner();
+            $referral = $this->referralService->getReferral();
+            $referralProgramId = $referral['program_id'] ?? null;
+
+            $programMatchesProduct = $referralProgramId
+                && $product->partnershipPrograms->contains('id', $referralProgramId);
+
+            if ($programMatchesProduct) {
+                $referralProcessed = true;
+                $referringPartner = $this->referralService->getProgramPartner();
+            } else {
+                $this->referralService->clearReferral();
+                $referralError = 'This referral link is not valid for this product.';
+            }
         } elseif (is_array($result)) {
             $referralError = $result['error'];
         }
