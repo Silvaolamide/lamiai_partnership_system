@@ -20,7 +20,17 @@ class BusinessOnboardingController extends Controller
             $request->session()->put('business_onboarding_intent', true);
             return redirect()->route('register');
         }
+
+        if (!$request->user()->hasVerifiedEmail() || !$request->user()->business_super_admin_approved_at) {
+            return redirect()->route('business.pending');
+        }
+
         return redirect()->route('business.onboarding', ['step' => 'profile']);
+    }
+
+    public function pending(): View
+    {
+        return view('business.pending');
     }
 
     public function show(Request $request, string $step): View|RedirectResponse
@@ -124,6 +134,7 @@ class BusinessOnboardingController extends Controller
                 'status' => 'active',
                 'attribution_window_days' => $data['commission']['attribution_window_days'],
                 'minimum_payout' => $data['commission']['minimum_payout'],
+                'settings' => ['partner_business_approval_required' => false],
             ]);
 
             $program->products()->sync([$product->id]);
