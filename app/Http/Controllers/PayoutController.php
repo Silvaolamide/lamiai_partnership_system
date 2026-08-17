@@ -14,15 +14,12 @@ class PayoutController extends Controller
 {
     public function index()
     {
-        $partners = ProgramPartner::where('user_id', Auth::id())
-            ->with('program')
-            ->get();
-
+        $partners = ProgramPartner::where('user_id', Auth::id())->with('program')->get();
         $partnerIds = $partners->pluck('id');
 
         $payable = Commission::whereIn('partner_id', $partnerIds)
             ->where('status', 'payable')
-            ->with('program')
+            ->with(['program', 'order'])
             ->orderBy('created_at')
             ->get();
 
@@ -39,12 +36,7 @@ class PayoutController extends Controller
             ];
         });
 
-        return view('partner.payouts.index', compact(
-            'partners',
-            'payable',
-            'payableByProgram',
-            'payouts'
-        ));
+        return view('partner.payouts.index', compact('partners', 'payable', 'payableByProgram', 'payouts'));
     }
 
     public function store(Request $request)
@@ -62,6 +54,7 @@ class PayoutController extends Controller
             $commissions = Commission::whereIn('id', $validated['commission_ids'])
                 ->whereIn('partner_id', $partnerIds)
                 ->where('status', 'payable')
+                ->with('order')
                 ->lockForUpdate()
                 ->get();
 
@@ -69,14 +62,16 @@ class PayoutController extends Controller
                 abort(422, 'One or more selected commissions are no longer payable.');
             }
 
-            $programIds = $commissions->pluck('program_id')->unique();
-
-            if ($programIds->count() !== 1) {
+            if ($commissions->pluck('program_id')->unique()->count() !== 1) {
                 abort(422, 'A payout request can only contain commissions from one partnership program.');
             }
 
-            $amount = $commissions->sum('commission_amount');
+            if ($commissions->pluck('partner_id')->unique()->count() !== 1) {
+                abort(422, 'A payout request can only contain commissions for one partner.');
+            }
+
             $first = $commissions->first();
+            $amount = $commissions->sum('commission_amount');
 
             $payout = Payout::create([
                 'partner_id' => $first->partner_id,
@@ -84,7 +79,7 @@ class PayoutController extends Controller
                 'amount' => $amount,
                 'currency' => $first->order?->currency ?? 'NGN',
                 'method' => $validated['method'],
-                'status' => 'pending',
+                'status' => 'requested',
                 'reference' => 'PAYOUT-' . Str::upper(Str::random(12)),
                 'notes' => $validated['notes'] ?? null,
                 'requested_at' => now(),
