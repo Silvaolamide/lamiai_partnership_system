@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\PartnershipProgram;
 use App\Models\User;
 use App\Models\ProgramPartner;
+use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
@@ -15,30 +16,15 @@ class PartnerController extends Controller
 {
     public function create(Request $request)
     {
-        $programs = PartnershipProgram::where('status', 'active')
-            ->orderBy('name')
-            ->get();
-
+        $programs = PartnershipProgram::where('status', 'active')->orderBy('name')->get();
         $recruiterCode = $request->query('recruiter_code');
         $recruiterPartner = null;
         $recruiterError = null;
-
         if ($recruiterCode) {
-            $recruiterPartner = ProgramPartner::where('partner_code', $recruiterCode)
-                ->where('status', 'active')
-                ->first();
-
-            if (!$recruiterPartner) {
-                $recruiterError = 'Invalid or inactive recruiter code.';
-            }
+            $recruiterPartner = ProgramPartner::where('partner_code', $recruiterCode)->where('status', 'active')->first();
+            if (!$recruiterPartner) $recruiterError = 'Invalid or inactive recruiter code.';
         }
-
-        return view('partner.apply', [
-            'programs' => $programs,
-            'recruiterCode' => $recruiterCode,
-            'recruiterPartner' => $recruiterPartner,
-            'recruiterError' => $recruiterError,
-        ]);
+        return view('partner.apply', compact('programs', 'recruiterCode', 'recruiterPartner', 'recruiterError'));
     }
 
     public function store(Request $request)
@@ -51,56 +37,28 @@ class PartnerController extends Controller
             'program_id' => ['required', 'exists:partnership_programs,id'],
             'recruiter_code' => ['nullable', 'string', 'exists:program_partners,partner_code'],
         ]);
-
         $recruiterCode = $validated['recruiter_code'] ?? null;
-
         if ($recruiterCode) {
-            $recruiterPartner = ProgramPartner::where('partner_code', $recruiterCode)
-                ->where('program_id', $validated['program_id'])
-                ->where('status', 'active')
-                ->first();
-
-            if (!$recruiterPartner) {
-                return redirect()->back()
-                    ->withInput()
-                    ->withErrors(['recruiter_code' => 'Recruiter code does not exist for this program or is inactive.']);
-            }
+            $recruiterPartner = ProgramPartner::where('partner_code', $recruiterCode)->where('program_id', $validated['program_id'])->where('status', 'active')->first();
+            if (!$recruiterPartner) return redirect()->back()->withInput()->withErrors(['recruiter_code' => 'Recruiter code does not exist for this program or is inactive.']);
         }
-
         $user = null;
-
         DB::transaction(function () use ($validated, $recruiterCode, &$user) {
-            $user = User::create([
-                'name' => $validated['name'],
-                'email' => $validated['email'],
-                'password' => Hash::make($validated['password']),
-            ]);
-
+            $user = User::create(['name' => $validated['name'], 'email' => $validated['email'], 'password' => Hash::make($validated['password'])]);
             $parentPartnerId = null;
-
             if ($recruiterCode) {
-                $recruiterPartner = ProgramPartner::where('partner_code', $recruiterCode)
-                    ->where('program_id', $validated['program_id'])
-                    ->where('status', 'active')
-                    ->first();
-
+                $recruiterPartner = ProgramPartner::where('partner_code', $recruiterCode)->where('program_id', $validated['program_id'])->where('status', 'active')->first();
                 $parentPartnerId = $recruiterPartner?->id;
             }
-
             ProgramPartner::create([
-                'program_id' => $validated['program_id'],
-                'user_id' => $user->id,
-                'partner_code' => 'PENDING-' . Str::upper(Str::random(8)),
-                'status' => 'pending',
-                'parent_partner_id' => $parentPartnerId,
-                'joined_at' => now(),
+                'program_id' => $validated['program_id'], 'user_id' => $user->id,
+                'partner_code' => 'PENDING-' . Str::upper(Str::random(8)), 'status' => 'pending',
+                'parent_partner_id' => $parentPartnerId, 'joined_at' => now(),
             ]);
         });
-
-        // Sign the new partner in so the dashboard is immediately available.
+        event(new Registered($user));
         Auth::login($user);
         $request->session()->regenerate();
-
         return redirect()->route('partner.dashboard');
     }
 }
