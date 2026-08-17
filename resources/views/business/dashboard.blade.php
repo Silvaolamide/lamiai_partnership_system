@@ -18,6 +18,7 @@
             <a href="{{ route('business.programs.index') }}" class="block rounded-xl px-4 py-3 text-sm font-bold text-slate-600 hover:bg-slate-50">Programs</a>
             <a href="{{ route('business.products.index') }}" class="block rounded-xl px-4 py-3 text-sm font-bold text-slate-600 hover:bg-slate-50">Products</a>
             <a href="{{ route('business.affiliates.index') }}" class="block rounded-xl px-4 py-3 text-sm font-bold text-slate-600 hover:bg-slate-50">Affiliates</a>
+            <a href="{{ route('network.index') }}" class="block rounded-xl bg-violet-50 px-4 py-3 text-sm font-black text-violet-700">Recruitment Network</a>
             <a href="{{ route('business.sales.index') }}" class="block rounded-xl px-4 py-3 text-sm font-bold text-slate-600 hover:bg-slate-50">Sales</a>
             <a href="{{ route('business.commissions.index') }}" class="block rounded-xl px-4 py-3 text-sm font-bold text-slate-600 hover:bg-slate-50">Commissions</a>
             <a href="{{ route('business.payouts.index') }}" class="block rounded-xl px-4 py-3 text-sm font-bold text-slate-600 hover:bg-slate-50">Payouts</a>
@@ -32,6 +33,7 @@
             <div class="flex flex-wrap items-center justify-between gap-4">
                 <div><p class="text-xs font-black uppercase tracking-widest text-violet-600">Business dashboard</p><h1 class="mt-1 text-3xl font-black">{{ auth()->user()->business_name ?? 'Your Business' }}</h1></div>
                 <div class="flex gap-2">
+                    <a href="{{ route('network.index') }}" class="rounded-xl border border-violet-200 bg-violet-50 px-4 py-2.5 text-sm font-black text-violet-700">Network</a>
                     <a href="{{ route('business.products.create') }}" class="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-black">+ Add product</a>
                     <a href="{{ route('business.payouts.index') }}" class="rounded-xl border border-violet-200 bg-violet-50 px-4 py-2.5 text-sm font-black text-violet-700">Request payout</a>
                     <a href="{{ route('business.start') }}" class="rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-black text-white">Create program</a>
@@ -76,8 +78,9 @@
                 </div>
             </section>
 
-            <section class="grid gap-7 lg:grid-cols-3">
+            <section class="grid gap-7 lg:grid-cols-4">
                 <a href="{{ route('business.affiliates.index') }}" class="rounded-2xl bg-white p-6 shadow-sm hover:ring-2 hover:ring-violet-200"><p class="text-xs font-black uppercase tracking-widest text-violet-600">Sales force</p><h2 class="mt-1 text-xl font-black">Affiliates</h2><p class="mt-3 text-sm text-slate-500">Manage the people promoting your products and see their performance.</p><span class="mt-5 inline-block text-sm font-black text-violet-600">Manage affiliates →</span></a>
+                <a href="{{ route('network.index') }}" class="rounded-2xl bg-white p-6 shadow-sm hover:ring-2 hover:ring-violet-200"><p class="text-xs font-black uppercase tracking-widest text-violet-600">Recruitment</p><h2 class="mt-1 text-xl font-black">Network</h2><p class="mt-3 text-sm text-slate-500">See your affiliates and the partners they recruit in a visual tree.</p><span class="mt-5 inline-block text-sm font-black text-violet-600">View network →</span></a>
                 <a href="{{ route('business.commissions.index') }}" class="rounded-2xl bg-white p-6 shadow-sm hover:ring-2 hover:ring-violet-200"><p class="text-xs font-black uppercase tracking-widest text-violet-600">Money out</p><h2 class="mt-1 text-xl font-black">Commissions</h2><p class="mt-3 text-sm text-slate-500">Review partner and recruiter earnings and payout status.</p><span class="mt-5 inline-block text-sm font-black text-violet-600">Manage commissions →</span></a>
                 <a href="{{ route('business.payouts.index') }}" class="rounded-2xl bg-white p-6 shadow-sm hover:ring-2 hover:ring-violet-200"><p class="text-xs font-black uppercase tracking-widest text-violet-600">Money in</p><h2 class="mt-1 text-xl font-black">Business payouts</h2><p class="mt-3 text-sm text-slate-500">Withdraw your net sale proceeds and track every business payment.</p><span class="mt-5 inline-block text-sm font-black text-violet-600">Manage payouts →</span></a>
             </section>
