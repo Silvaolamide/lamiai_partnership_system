@@ -1,284 +1,56 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-
     <meta charset="UTF-8">
-
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
-    >
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Partner Dashboard</title>
-
-    @vite([
-        'resources/css/app.css',
-        'resources/js/app.js'
-    ])
-
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
+<body class="min-h-screen bg-slate-50 text-slate-900">
+<div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+    <header class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+            <p class="text-sm font-semibold uppercase tracking-wider text-blue-600">LAMI AI Partners</p>
+            <h1 class="mt-1 text-3xl font-bold tracking-tight sm:text-4xl">Partner Dashboard</h1>
+            <p class="mt-2 text-slate-600">Welcome back, {{ auth()->user()->name }}.</p>
+        </div>
+        <div class="flex flex-wrap gap-2">
+            <a href="{{ route('partner.payouts.index') }}" class="rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-slate-700">Payouts</a>
+            <a href="{{ route('profile.edit') }}" class="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold shadow-sm hover:bg-slate-50">My Profile</a>
+        </div>
+    </header>
 
-<body class="bg-gray-50">
+    <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><p class="text-sm font-medium text-slate-500">Total Sales Value</p><p class="mt-2 text-3xl font-bold">₦{{ number_format($totalSalesAmount, 2) }}</p><p class="mt-1 text-xs text-slate-500">{{ $totalSales }} completed order{{ $totalSales === 1 ? '' : 's' }}</p></div>
+        <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><p class="text-sm font-medium text-slate-500">Available Commission</p><p class="mt-2 text-3xl font-bold text-emerald-600">₦{{ number_format($totalPending, 2) }}</p><p class="mt-1 text-xs text-slate-500">Eligible for payout</p></div>
+        <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><p class="text-sm font-medium text-slate-500">Paid Commission</p><p class="mt-2 text-3xl font-bold">₦{{ number_format($totalPaid, 2) }}</p><p class="mt-1 text-xs text-slate-500">Lifetime paid earnings</p></div>
+        <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><p class="text-sm font-medium text-slate-500">Partners Recruited</p><p class="mt-2 text-3xl font-bold">{{ $totalRecruited }}</p><p class="mt-1 text-xs text-slate-500">Your active downline</p></div>
+    </section>
 
-<div class="max-w-7xl mx-auto px-6 py-10">
-
-    <!-- Header -->
-    <div class="mb-10">
-        <h1 class="text-4xl font-bold text-gray-900">
-            Partner Dashboard
-        </h1>
-
-        <p class="text-gray-600 mt-2">
-            Welcome, {{ auth()->user()->name }}
-        </p>
+    <div class="mt-8 space-y-6">
+        @forelse($programStats as $programStat)
+            @php
+                $program = $programStat['program'];
+                $partner = $programStat['partner'];
+                $rules = $programStat['program']->commissionRules->where('status', true)->where('event', 'sale');
+                $level1Rule = $rules->where('level', 1)->sortByDesc('priority')->first();
+                $level2Rule = $rules->where('level', 2)->sortByDesc('priority')->first();
+            @endphp
+            <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                <div class="border-b border-slate-200 bg-gradient-to-r from-slate-900 to-slate-800 px-6 py-6 text-white sm:px-8"><div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"><div><p class="text-sm text-slate-300">Partnership Program</p><h2 class="mt-1 text-2xl font-bold">{{ $program->name }}</h2><p class="mt-2 text-sm text-slate-300">Partner code: <span class="font-mono font-semibold text-white">{{ $partner->partner_code }}</span></p></div><span class="w-fit rounded-full bg-emerald-500/20 px-3 py-1 text-sm font-semibold text-emerald-200">Active Partner</span></div></div>
+                <div class="p-6 sm:p-8">
+                    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"><div class="rounded-xl bg-slate-50 p-4"><p class="text-sm text-slate-500">Available</p><p class="mt-1 text-2xl font-bold">₦{{ number_format($programStat['stats']['pending'], 2) }}</p></div><div class="rounded-xl bg-slate-50 p-4"><p class="text-sm text-slate-500">Paid</p><p class="mt-1 text-2xl font-bold text-emerald-600">₦{{ number_format($programStat['stats']['paid'], 2) }}</p></div><div class="rounded-xl bg-slate-50 p-4"><p class="text-sm text-slate-500">Sales</p><p class="mt-1 text-2xl font-bold">{{ $programStat['paid_orders'] }}</p></div><div class="rounded-xl bg-slate-50 p-4"><p class="text-sm text-slate-500">Recruited</p><p class="mt-1 text-2xl font-bold">{{ $programStat['recruited_partners_count'] }}</p></div></div>
+                    <div class="mt-8 grid gap-6 lg:grid-cols-2">
+                        <div class="rounded-2xl border border-slate-200 p-5"><div class="flex items-center justify-between gap-4"><div><h3 class="font-bold">Promote Products</h3><p class="mt-1 text-sm text-slate-500">Use your personal referral link.</p></div></div><div class="mt-5 space-y-4">@forelse($program->products as $product)<div class="rounded-xl bg-slate-50 p-4"><div class="flex items-start justify-between gap-3"><div><p class="font-semibold">{{ $product->name }}</p><p class="mt-1 text-sm text-slate-500">₦{{ number_format($product->price, 2) }}</p></div></div><div class="mt-3 flex gap-2"><input id="product_link_{{ $partner->id }}_{{ $product->id }}" readonly value="{{ route('product.show', ['slug' => $product->slug]) }}?ref={{ $partner->partner_code }}" class="min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600"><button type="button" onclick="copyText('product_link_{{ $partner->id }}_{{ $product->id }}', this)" class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700">Copy</button></div></div>@empty<p class="text-sm text-slate-500">No products are currently attached to this program.</p>@endforelse</div></div>
+                        <div class="rounded-2xl border border-slate-200 p-5"><h3 class="font-bold">Recruit Partners</h3><p class="mt-1 text-sm text-slate-500">Invite other marketers. Their qualifying sales can generate your higher-level commission.</p><div class="mt-5 rounded-xl bg-slate-50 p-4"><label class="text-xs font-semibold uppercase tracking-wide text-slate-500">Recruitment link</label><div class="mt-2 flex gap-2"><input id="recruit_link_{{ $partner->id }}" readonly value="{{ route('partner.apply') }}?recruiter_code={{ $partner->partner_code }}" class="min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600"><button type="button" onclick="copyText('recruit_link_{{ $partner->id }}', this)" class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700">Copy</button></div></div><div class="mt-5 grid grid-cols-2 gap-3"><div class="rounded-xl bg-blue-50 p-4"><p class="text-xs font-medium text-blue-700">Direct earnings</p><p class="mt-1 text-xl font-bold text-blue-900">₦{{ number_format($programStat['direct_commission'], 2) }}</p>@if($level1Rule)<p class="mt-1 text-xs text-blue-700">{{ $level1Rule->commission_type === 'percentage' ? number_format($level1Rule->value, 2).'%' : '₦'.number_format($level1Rule->value, 2) }}</p>@endif</div><div class="rounded-xl bg-violet-50 p-4"><p class="text-xs font-medium text-violet-700">Recruiter earnings</p><p class="mt-1 text-xl font-bold text-violet-900">₦{{ number_format($programStat['recruiter_commission'], 2) }}</p>@if($level2Rule)<p class="mt-1 text-xs text-violet-700">{{ $level2Rule->commission_type === 'percentage' ? number_format($level2Rule->value, 2).'%' : '₦'.number_format($level2Rule->value, 2) }}</p>@endif</div></div></div>
+                    </div>
+                </div>
+            </section>
+        @empty
+            <section class="rounded-2xl border border-slate-200 bg-white p-10 text-center shadow-sm"><h2 class="text-2xl font-bold">No active partnership yet</h2><p class="mx-auto mt-2 max-w-lg text-slate-600">Apply to an available partnership program to get your unique referral links and start earning.</p><a href="{{ route('partner.apply') }}" class="mt-6 inline-flex rounded-xl bg-slate-900 px-6 py-3 font-semibold text-white hover:bg-slate-700">Browse Programs</a></section>
+        @endforelse
     </div>
-
-    <!-- Overall Statistics -->
-    <div class="grid md:grid-cols-4 gap-6 mb-8">
-
-        <div class="bg-white rounded-lg shadow-sm p-6">
-            <p class="text-gray-600 text-sm font-medium mb-2">Total Pending Commission</p>
-            <p class="text-3xl font-bold text-gray-900">₦{{ number_format($totalPending, 2) }}</p>
-            <p class="text-gray-500 text-xs mt-2">Available for payout</p>
-        </div>
-
-        <div class="bg-white rounded-lg shadow-sm p-6">
-            <p class="text-gray-600 text-sm font-medium mb-2">Total Paid Commission</p>
-            <p class="text-3xl font-bold text-green-600">₦{{ number_format($totalPaid, 2) }}</p>
-            <p class="text-gray-500 text-xs mt-2">Lifetime earnings</p>
-        </div>
-
-        <div class="bg-white rounded-lg shadow-sm p-6">
-            <p class="text-gray-600 text-sm font-medium mb-2">Active Programs</p>
-            <p class="text-3xl font-bold text-gray-900">{{ count($programStats) }}</p>
-            <p class="text-gray-500 text-xs mt-2">Partnership programs</p>
-        </div>
-
-        <div class="bg-white rounded-lg shadow-sm p-6">
-            <p class="text-gray-600 text-sm font-medium mb-2">Total Sales</p>
-            <p class="text-3xl font-bold text-gray-900">
-                {{ array_sum(array_column($programStats, 'paid_orders')) ?? 0 }}
-            </p>
-            <p class="text-gray-500 text-xs mt-2">Completed orders</p>
-        </div>
-
-    </div>
-
-    <!-- Program Details -->
-    @forelse($programStats as $programStat)
-
-        <div class="bg-white rounded-lg shadow-sm p-8 mb-8">
-
-            <!-- Program Header -->
-            <div class="flex justify-between items-start mb-6 pb-6 border-b">
-                <div>
-                    <h2 class="text-2xl font-bold text-gray-900">
-                        {{ $programStat['program']->name }}
-                    </h2>
-                    <p class="text-gray-600 mt-1">
-                        Partnership Code: <span class="font-mono font-bold">{{ $programStat['partner']->partner_code }}</span>
-                    </p>
-                </div>
-                <div class="text-right">
-                    <span class="inline-block bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-semibold">
-                        Active
-                    </span>
-                </div>
-            </div>
-
-            <!-- Statistics Grid -->
-            <div class="grid md:grid-cols-4 gap-6 mb-8">
-
-                <div class="p-4 bg-gray-50 rounded-lg">
-                    <p class="text-gray-600 text-sm mb-1">Pending Commission</p>
-                    <p class="text-2xl font-bold text-gray-900">
-                        ₦{{ number_format($programStat['stats']['pending'], 2) }}
-                    </p>
-                    <p class="text-gray-500 text-xs mt-1">
-                        ({{ $programStat['stats']['pending_count'] }} commissions)
-                    </p>
-                </div>
-
-                <div class="p-4 bg-gray-50 rounded-lg">
-                    <p class="text-gray-600 text-sm mb-1">Paid Commission</p>
-                    <p class="text-2xl font-bold text-green-600">
-                        ₦{{ number_format($programStat['stats']['paid'], 2) }}
-                    </p>
-                    <p class="text-gray-500 text-xs mt-1">
-                        ({{ $programStat['stats']['paid_count'] }} commissions)
-                    </p>
-                </div>
-
-                <div class="p-4 bg-gray-50 rounded-lg">
-                    <p class="text-gray-600 text-sm mb-1">Total Sales</p>
-                    <p class="text-2xl font-bold text-gray-900">
-                        {{ $programStat['paid_orders'] }}
-                    </p>
-                    <p class="text-gray-500 text-xs mt-1">
-                        Completed orders
-                    </p>
-                </div>
-
-                <div class="p-4 bg-gray-50 rounded-lg">
-                    <p class="text-gray-600 text-sm mb-1">Recruited Partners</p>
-                    <p class="text-2xl font-bold text-gray-900">
-                        {{ $programStat['recruited_partners_count'] }}
-                    </p>
-                    <p class="text-gray-500 text-xs mt-1">
-                        Active downline
-                    </p>
-                </div>
-
-            </div>
-
-            <!-- Referral Link Section -->
-            <div class="mb-8 pb-8 border-b">
-                <h3 class="text-lg font-bold mb-4">Your Referral Link</h3>
-
-                <div class="space-y-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">
-                            Promote the product
-                        </label>
-                        <div class="flex gap-2">
-                            <input
-                                type="text"
-                                id="referral_link_{{ $programStat['partner']->id }}"
-                                value="{{ route('product.show', ['slug' => 'ai-filmmaking-masterclass']) }}?ref={{ $programStat['partner']->partner_code }}"
-                                readonly
-                                class="flex-1 border rounded-lg px-4 py-2 bg-gray-50 font-mono text-sm"
-                            >
-
-                            <button
-                                onclick="copyToClipboard('referral_link_{{ $programStat['partner']->id }}')"
-                                class="bg-black text-white px-6 rounded-lg hover:bg-gray-900 transition font-semibold"
-                            >
-                                Copy
-                            </button>
-                        </div>
-                    </div>
-
-                    <p class="text-sm text-gray-600">
-                        Share this link with your audience to earn commissions. 
-                        When someone purchases using your link, you'll earn 
-                        <strong>20%</strong>
-                        commission on the sale.
-                    </p>
-                </div>
-            </div>
-
-            <!-- Recruitment Link -->
-            <div class="mb-8 pb-8 border-b">
-                <h3 class="text-lg font-bold mb-4">Recruit Other Partners</h3>
-
-                <p class="text-gray-600 mb-4">
-                    Invite other marketers to join your team. When they recruit customers, you'll earn 
-                    <strong>5%</strong>
-                    on each of their sales.
-                </p>
-
-                <div class="flex gap-2">
-                    <input
-                        type="text"
-                        id="recruit_link_{{ $programStat['partner']->id }}"
-                        value="{{ route('partner.apply') }}?recruiter_code={{ $programStat['partner']->partner_code }}"
-                        readonly
-                        class="flex-1 border rounded-lg px-4 py-2 bg-gray-50 font-mono text-sm"
-                    >
-
-                    <button
-                        onclick="copyToClipboard('recruit_link_{{ $programStat['partner']->id }}')"
-                        class="bg-black text-white px-6 rounded-lg hover:bg-gray-900 transition font-semibold"
-                    >
-                        Copy
-                    </button>
-                </div>
-            </div>
-
-            <!-- Commission Rules Info -->
-            <div>
-                <h3 class="text-lg font-bold mb-4">Commission Structure</h3>
-
-                <div class="space-y-3">
-                    <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                        <div>
-                            <p class="font-medium text-gray-900">
-                                Level 1 (Direct Sales)
-                            </p>
-                            <p class="text-sm text-gray-600">
-                                Percentage of sale
-                            </p>
-                        </div>
-                        <p class="text-2xl font-bold text-gray-900">
-                            20%
-                        </p>
-                    </div>
-                    
-                    <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                        <div>
-                            <p class="font-medium text-gray-900">
-                                Level 2 (Recruiter Bonus)
-                            </p>
-                            <p class="text-sm text-gray-600">
-                                Percentage of sale
-                            </p>
-                        </div>
-                        <p class="text-2xl font-bold text-gray-900">
-                            5%
-                        </p>
-                    </div>
-                </div>
-            </div>
-
-        </div>
-
-    @empty
-
-        <div class="bg-white rounded-lg shadow-sm p-12 text-center">
-
-            <h2 class="text-2xl font-bold text-gray-900 mb-2">
-                No Active Partnerships
-            </h2>
-
-            <p class="text-gray-600 mb-6">
-                You don't currently have an approved partnership. 
-                Apply to join a partnership program to start earning commissions.
-            </p>
-
-            <a
-                href="{{ route('partner.apply') }}"
-                class="inline-block bg-black text-white px-8 py-3 rounded-lg font-semibold hover:bg-gray-900 transition"
-            >
-                Browse Partnership Programs
-            </a>
-
-        </div>
-
-    @endforelse
-
 </div>
-
-<script>
-function copyToClipboard(elementId) {
-    const element = document.getElementById(elementId);
-    const text = element.value;
-    
-    navigator.clipboard.writeText(text).then(function() {
-        // Show visual feedback
-        const button = event.target;
-        const originalText = button.textContent;
-        button.textContent = 'Copied!';
-        button.classList.add('bg-green-600');
-        
-        setTimeout(function() {
-            button.textContent = originalText;
-            button.classList.remove('bg-green-600');
-        }, 2000);
-    });
-}
-</script>
-
+<script>function copyText(id,button){const input=document.getElementById(id);navigator.clipboard.writeText(input.value).then(()=>{const original=button.textContent;button.textContent='Copied!';button.classList.add('bg-emerald-600');setTimeout(()=>{button.textContent=original;button.classList.remove('bg-emerald-600')},1800)})}</script>
 </body>
-
 </html>

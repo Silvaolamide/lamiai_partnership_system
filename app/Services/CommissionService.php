@@ -11,31 +11,13 @@ use Exception;
 
 class CommissionService
 {
-    /**
-     * Generate commissions for a paid order.
-     * 
-     * This method:
-     * 1. Loads commission rules for the order's program
-     * 2. Calculates commissions for all eligible partners (direct + parent hierarchy)
-     * 3. Creates commission records in database
-     * 4. Prevents duplicate commission generation (idempotent)
-     * 
-     * Must be called only after order payment is confirmed.
-     * 
-     * @param Order $order The paid order
-     * @return array Returns array with commission details
-     * @throws Exception
-     */
     public function generateCommissionsForOrder(Order $order)
     {
-        // Prevent processing if order is not paid
         if ($order->status !== 'paid') {
             throw new Exception('Order must be marked as paid before generating commissions.');
         }
 
-        // Use database transaction for atomicity
         return DB::transaction(function () use ($order) {
-            // Check if commissions already exist for this order (idempotency check)
             if ($order->commissions()->exists()) {
                 return [
                     'status' => 'already_exists',
@@ -44,63 +26,50 @@ class CommissionService
                 ];
             }
 
+            if (!$order->program_id || !$order->partner_id) {
+                return [
+                    'status' => 'no_partner',
+                    'message' => 'No attributed partner/program; no partner commissions generated.',
+                    'commissions_generated' => 0,
+                    'commissions' => [],
+                    'total_commission' => 0,
+                ];
+            }
+
+            $order->loadMissing(['partner.parentPartner', 'items.product']);
             $commissions = [];
 
-            // Step 1: Generate commission for direct seller (if partner exists)
-            if ($order->partner_id) {
-                $directCommission = $this->generateDirectCommission($order);
-                if ($directCommission) {
-                    $commissions[] = $directCommission;
-                }
+            $directCommission = $this->generateDirectCommission($order);
+            if ($directCommission) {
+                $commissions[] = $directCommission;
             }
 
-            // Step 2: Generate commissions for parent hierarchy
-            if ($order->partner_id) {
-                $hierarchyCommissions = $this->generateHierarchyCommissions($order);
-                $commissions = array_merge($commissions, $hierarchyCommissions);
-            }
+            $commissions = array_merge(
+                $commissions,
+                $this->generateHierarchyCommissions($order)
+            );
 
             return [
                 'status' => 'success',
                 'order_id' => $order->id,
                 'commissions_generated' => count($commissions),
                 'commissions' => $commissions,
-                'total_commission' => array_sum(array_column($commissions, 'commission_amount')),
+                'total_commission' => collect($commissions)->sum(fn ($commission) => (float) $commission->commission_amount),
             ];
         });
     }
 
-    /**
-     * Generate commission for direct seller (Level 1).
-     * 
-     * @param Order $order
-     * @return Commission|null
-     */
     private function generateDirectCommission(Order $order)
     {
-        // Get Level 1 commission rule for this program
-        $rule = CommissionRule::where('program_id', $order->program_id)
-            ->where('level', 1)
-            ->where('status', true)
-            ->where('event', 'sale')
-            ->first();
+        $rule = $this->resolveRule($order, 1);
 
         if (!$rule) {
             return null;
         }
 
-        // Calculate commission amount
-        $baseAmount = $order->total;
-        $rate = $rule->value; // e.g., 20
-        $commissionAmount = ($baseAmount * $rate) / 100;
+        $commissionAmount = $this->calculateCommission($order->total, $rule);
 
-        // Cap commission if maximum_amount is set
-        if ($rule->maximum_amount && $commissionAmount > $rule->maximum_amount) {
-            $commissionAmount = $rule->maximum_amount;
-        }
-
-        // Create commission record
-        $commission = Commission::create([
+        return Commission::create([
             'program_id' => $order->program_id,
             'order_id' => $order->id,
             'partner_id' => $order->partner_id,
@@ -108,80 +77,50 @@ class CommissionService
             'rule_id' => $rule->id,
             'level' => 1,
             'commission_type' => $rule->commission_type,
-            'rate' => $rate,
-            'base_amount' => $baseAmount,
+            'rate' => $rule->value,
+            'base_amount' => $order->total,
             'commission_amount' => $commissionAmount,
-            'status' => 'available', // Direct sales commission is immediately available
+            'status' => 'available',
             'available_at' => now(),
         ]);
-
-        return $commission;
     }
 
-    /**
-     * Generate commissions for parent hierarchy (Level 2+).
-     * 
-     * Walks up the partner hierarchy and creates commissions for each recruiter
-     * based on the configured rules for their level.
-     * 
-     * @param Order $order
-     * @return array Array of Commission models
-     */
     private function generateHierarchyCommissions(Order $order)
     {
         $commissions = [];
         $currentPartner = $order->partner;
         $level = 2;
 
-        // Walk up the hierarchy
-        while ($currentPartner->parent_partner_id) {
+        while ($currentPartner && $currentPartner->parent_partner_id) {
             $parentPartner = $currentPartner->parentPartner;
 
-            if (!$parentPartner) {
+            if (!$parentPartner || $parentPartner->status !== 'active') {
                 break;
             }
 
-            // Get commission rule for this level
-            $rule = CommissionRule::where('program_id', $order->program_id)
-                ->where('level', $level)
-                ->where('status', true)
-                ->where('event', 'sale')
-                ->first();
+            $rule = $this->resolveRule($order, $level);
 
-            // If no rule for this level, stop hierarchy traversal
             if (!$rule) {
                 break;
             }
 
-            // Calculate commission amount
-            $baseAmount = $order->total;
-            $rate = $rule->value;
-            $commissionAmount = ($baseAmount * $rate) / 100;
+            $commissionAmount = $this->calculateCommission($order->total, $rule);
 
-            // Cap commission if maximum_amount is set
-            if ($rule->maximum_amount && $commissionAmount > $rule->maximum_amount) {
-                $commissionAmount = $rule->maximum_amount;
-            }
-
-            // Create commission record for this level
-            $commission = Commission::create([
+            $commissions[] = Commission::create([
                 'program_id' => $order->program_id,
                 'order_id' => $order->id,
                 'partner_id' => $parentPartner->id,
-                'source_partner_id' => $order->partner_id, // Track the original seller
+                'source_partner_id' => $order->partner_id,
                 'rule_id' => $rule->id,
                 'level' => $level,
                 'commission_type' => $rule->commission_type,
-                'rate' => $rate,
-                'base_amount' => $baseAmount,
+                'rate' => $rule->value,
+                'base_amount' => $order->total,
                 'commission_amount' => $commissionAmount,
                 'status' => 'available',
                 'available_at' => now(),
             ]);
 
-            $commissions[] = $commission;
-
-            // Move up one level in hierarchy
             $currentPartner = $parentPartner;
             $level++;
         }
@@ -190,11 +129,49 @@ class CommissionService
     }
 
     /**
-     * Get pending commission amount for a partner.
-     * 
-     * @param ProgramPartner $partner
-     * @return float
+     * Prefer a product-specific rule. Fall back to the program-wide rule.
+     * Higher priority wins within either scope.
      */
+    private function resolveRule(Order $order, int $level): ?CommissionRule
+    {
+        $productId = $order->items->first()?->product_id;
+
+        if ($productId) {
+            $productRule = CommissionRule::where('program_id', $order->program_id)
+                ->where('product_id', $productId)
+                ->where('level', $level)
+                ->where('status', true)
+                ->where('event', 'sale')
+                ->orderByDesc('priority')
+                ->first();
+
+            if ($productRule) {
+                return $productRule;
+            }
+        }
+
+        return CommissionRule::where('program_id', $order->program_id)
+            ->whereNull('product_id')
+            ->where('level', $level)
+            ->where('status', true)
+            ->where('event', 'sale')
+            ->orderByDesc('priority')
+            ->first();
+    }
+
+    private function calculateCommission($baseAmount, CommissionRule $rule): float
+    {
+        $commissionAmount = $rule->commission_type === 'fixed'
+            ? (float) $rule->value
+            : ((float) $baseAmount * (float) $rule->value) / 100;
+
+        if ($rule->maximum_amount !== null) {
+            $commissionAmount = min($commissionAmount, (float) $rule->maximum_amount);
+        }
+
+        return round(max(0, $commissionAmount), 2);
+    }
+
     public function getPendingCommissionAmount(ProgramPartner $partner)
     {
         return (float) Commission::where('partner_id', $partner->id)
@@ -202,12 +179,6 @@ class CommissionService
             ->sum('commission_amount');
     }
 
-    /**
-     * Get paid commission amount for a partner.
-     * 
-     * @param ProgramPartner $partner
-     * @return float
-     */
     public function getPaidCommissionAmount(ProgramPartner $partner)
     {
         return (float) Commission::where('partner_id', $partner->id)
@@ -215,12 +186,6 @@ class CommissionService
             ->sum('commission_amount');
     }
 
-    /**
-     * Get total commission amount for a partner (all statuses).
-     * 
-     * @param ProgramPartner $partner
-     * @return float
-     */
     public function getTotalCommissionAmount(ProgramPartner $partner)
     {
         return (float) Commission::where('partner_id', $partner->id)
@@ -228,12 +193,6 @@ class CommissionService
             ->sum('commission_amount');
     }
 
-    /**
-     * Get commission stats for a partner in a specific program.
-     * 
-     * @param ProgramPartner $partner
-     * @return array
-     */
     public function getCommissionStats(ProgramPartner $partner)
     {
         $pending = $this->getPendingCommissionAmount($partner);
