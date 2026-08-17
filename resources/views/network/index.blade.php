@@ -1,11 +1,12 @@
 <style>
-    /* Vertical hierarchy: every depth is a single row. All partners at the same level share that row. */
-    .network-tree.vertical { width: max-content; min-width: 100%; }
-    .network-level-row { display: flex; justify-content: center; align-items: flex-start; gap: 2rem; position: relative; min-width: max-content; padding-top: 2.5rem; }
-    .network-level-row:first-child { padding-top: 0; }
-    .network-level-row:not(:first-child)::before { content: ''; position: absolute; top: 0; left: 50%; width: 2px; height: 2.5rem; transform: translateX(-50%); background: rgb(221 214 254); }
-    .network-level-row:not(:first-child)::after { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: rgb(221 214 254); }
-    .network-level-row:not(:first-child) .network-level-card::before { content: ''; position: absolute; top: -2.5rem; left: 50%; width: 2px; height: 2.5rem; transform: translateX(-50%); background: rgb(221 214 254); }
+    /* Vertical hierarchy: every depth is a single row. Connectors are drawn from each referrer directly to its direct recruits. */
+    .network-tree.vertical { width: max-content; min-width: 100%; position: relative; }
+    .network-tree.vertical .network-level-row { display: flex; justify-content: center; align-items: flex-start; gap: 2rem; position: relative; min-width: max-content; padding-top: 3rem; }
+    .network-tree.vertical .network-level-row:first-child { padding-top: 0; }
+    .network-tree.vertical .network-level-card { position: relative; }
+    .network-tree.vertical .network-connectors { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; z-index: 0; }
+    .network-tree.vertical .network-level-row { z-index: 1; }
+    .network-tree.vertical .network-level-card { z-index: 2; }
 
     /* Horizontal: parent on the left, downlines extend to the right. */
     .network-tree.horizontal { width: max-content; min-width: 100%; }
@@ -16,8 +17,8 @@
     .network-tree.horizontal .network-node-children > .network-node::before { content: ''; position: absolute; left: -2rem; top: 2rem; width: 2rem; height: 2px; background: rgb(221 214 254); }
 
     @media (max-width: 900px) {
-        .network-level-row { justify-content: flex-start; gap: 1rem; }
-        .network-level-card { width: 320px; }
+        .network-tree.vertical .network-level-row { justify-content: flex-start; gap: 1rem; }
+        .network-tree.vertical .network-level-card { width: 320px; }
         .network-tree.horizontal .network-node-content { width: 320px; flex-basis: 320px; }
     }
 </style>
@@ -34,7 +35,51 @@
         </div>
     </x-slot>
 
-    <div class="py-8" x-data="{ layout: localStorage.getItem('networkTreeLayout') || 'vertical' }" x-init="$watch('layout', value => localStorage.setItem('networkTreeLayout', value))">
+    <div class="py-8" x-data="{
+        layout: localStorage.getItem('networkTreeLayout') || 'vertical',
+        drawConnections() {
+            if (this.layout !== 'vertical') return;
+            this.$nextTick(() => {
+                document.querySelectorAll('.network-tree.vertical').forEach(tree => {
+                    const svg = tree.querySelector('.network-connectors');
+                    if (!svg) return;
+                    const cards = [...tree.querySelectorAll('.network-level-card[data-network-id]')];
+                    const treeRect = tree.getBoundingClientRect();
+                    const width = Math.max(tree.scrollWidth, treeRect.width);
+                    const height = Math.max(tree.scrollHeight, treeRect.height);
+                    svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+                    svg.setAttribute('width', width);
+                    svg.setAttribute('height', height);
+                    svg.innerHTML = '';
+
+                    const byId = new Map(cards.map(card => [String(card.dataset.networkId), card]));
+                    cards.forEach(child => {
+                        const parentId = String(child.dataset.networkParent || '');
+                        const parent = byId.get(parentId);
+                        if (!parent) return;
+
+                        const parentRect = parent.getBoundingClientRect();
+                        const childRect = child.getBoundingClientRect();
+                        const x1 = parentRect.left + parentRect.width / 2 - treeRect.left;
+                        const y1 = parentRect.bottom - treeRect.top;
+                        const x2 = childRect.left + childRect.width / 2 - treeRect.left;
+                        const y2 = childRect.top - treeRect.top;
+
+                        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                        line.setAttribute('x1', x1);
+                        line.setAttribute('y1', y1);
+                        line.setAttribute('x2', x2);
+                        line.setAttribute('y2', y2);
+                        line.setAttribute('stroke', 'rgb(196 181 253)');
+                        line.setAttribute('stroke-width', '2');
+                        line.setAttribute('stroke-linecap', 'round');
+                        svg.appendChild(line);
+                    });
+                });
+            });
+        }
+    }"
+    x-init="$watch('layout', value => { localStorage.setItem('networkTreeLayout', value); drawConnections(); }); drawConnections(); window.addEventListener('resize', () => drawConnections())">
         <div class="mx-auto max-w-7xl space-y-6 px-4 sm:px-6 lg:px-8">
             <section class="grid gap-4 sm:grid-cols-3">
                 <div class="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm"><p class="text-sm font-medium text-gray-500">Partners in view</p><p class="mt-2 text-3xl font-black text-gray-900">{{ number_format($totalPartners) }}</p></div>
@@ -56,7 +101,7 @@
 
             <section class="rounded-2xl border border-violet-100 bg-gradient-to-r from-violet-50 to-indigo-50 p-5 sm:p-6">
                 <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                    <div><p class="text-sm font-black text-violet-900">Network view</p><p class="mt-1 max-w-3xl text-sm leading-6 text-violet-800"><strong>Vertical</strong>: the hierarchy is grouped by level — the root is at the top, every direct recruit is on the next line, and every second-generation recruit is on the line below that. <strong>Horizontal</strong>: the parent is on the left and downlines extend to the right.</p></div>
+                    <div><p class="text-sm font-black text-violet-900">Network view</p><p class="mt-1 max-w-3xl text-sm leading-6 text-violet-800"><strong>Vertical</strong>: the hierarchy is grouped by level — the root is at the top, every direct recruit is on the next line, and every second-generation recruit is on the line below that. Each line connects a partner <strong>directly to the partner who referred them</strong>. <strong>Horizontal</strong>: the parent is on the left and downlines extend to the right.</p></div>
                     <div class="inline-flex w-fit rounded-xl bg-white p-1 shadow-sm ring-1 ring-inset ring-violet-100" role="group" aria-label="Network tree layout">
                         <button type="button" @click="layout = 'vertical'" :class="layout === 'vertical' ? 'bg-violet-600 text-white shadow-sm' : 'text-gray-600 hover:bg-gray-50'" class="inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-xs font-black transition">Vertical</button>
                         <button type="button" @click="layout = 'horizontal'" :class="layout === 'horizontal' ? 'bg-violet-600 text-white shadow-sm' : 'text-gray-600 hover:bg-gray-50'" class="inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-xs font-black transition">Horizontal</button>
@@ -72,7 +117,8 @@
                     </div>
                     <div class="overflow-auto p-5 sm:p-8">
                         <div class="network-tree" :class="layout" style="min-width: 760px;">
-                            {{-- Vertical mode deliberately renders by depth, so every partner at the same level shares one row. --}}
+                            <svg x-show="layout === 'vertical'" class="network-connectors" aria-hidden="true"></svg>
+
                             <div x-show="layout === 'vertical'" class="space-y-0">
                                 @php
                                     $levels = [collect($tree['roots'])];
@@ -85,9 +131,7 @@
                                                 $nextLevel->push($child);
                                             }
                                         }
-                                        if ($nextLevel->isEmpty()) {
-                                            break;
-                                        }
+                                        if ($nextLevel->isEmpty()) break;
                                         $levels[] = $nextLevel;
                                         $currentLevel = $nextLevel;
                                         $guard++;
@@ -103,7 +147,6 @@
                                 @endforeach
                             </div>
 
-                            {{-- Horizontal mode keeps the parent -> children recursive tree. --}}
                             <div x-show="layout === 'horizontal'">
                                 @foreach($tree['roots'] as $root)
                                     @include('network.node', ['node' => $root, 'children' => $tree['children'], 'depth' => 0])
