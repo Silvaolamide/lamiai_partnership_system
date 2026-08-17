@@ -1,6 +1,7 @@
 <?php
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PartnershipProgramController;
+use App\Http\Controllers\BusinessOnboardingController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProductShowController;
@@ -19,7 +20,12 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/partner/dashboard', [PartnerDashboardController::class, 'index'])->name('partner.dashboard');
     Route::get('/partner/payouts', [PayoutController::class, 'index'])->name('partner.payouts.index');
     Route::post('/partner/payouts', [PayoutController::class, 'store'])->name('partner.payouts.store');
+
+    Route::get('/business/onboarding/{step}', [BusinessOnboardingController::class, 'show'])->name('business.onboarding');
+    Route::post('/business/onboarding/{step}', [BusinessOnboardingController::class, 'store'])->name('business.onboarding.store');
 });
+
+Route::get('/business/start', [BusinessOnboardingController::class, 'start'])->name('business.start');
 
 Route::middleware(['auth', 'role:super_admin'])->prefix('admin')->group(function () {
     Route::get('/', [AdminDashboardController::class, 'index'])->name('admin');
