@@ -1,70 +1,24 @@
 <style>
-    /* Vertical: parent on top, downlines underneath, then their downlines underneath. */
+    /* Vertical hierarchy: every depth is a single row. All partners at the same level share that row. */
     .network-tree.vertical { width: max-content; min-width: 100%; }
-    .network-tree.vertical .network-node { display: flex; flex-direction: column; align-items: center; }
-    .network-tree.vertical .network-node-content { width: 360px; }
-    .network-tree.vertical .network-node-children {
-        display: flex;
-        flex-direction: row;
-        align-items: flex-start;
-        justify-content: center;
-        gap: 2rem;
-        width: max-content;
-        margin-top: 2.5rem;
-        padding-top: 2rem;
-        position: relative;
-    }
-    .network-tree.vertical .network-node-children::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 50%;
-        width: 2px;
-        height: 2rem;
-        transform: translateX(-50%);
-        background: rgb(221 214 254);
-    }
-    .network-tree.vertical .network-node-children > .network-node { position: relative; }
-    .network-tree.vertical .network-node-children > .network-node::before {
-        content: '';
-        position: absolute;
-        top: -2rem;
-        left: 50%;
-        width: 2px;
-        height: 2rem;
-        transform: translateX(-50%);
-        background: rgb(221 214 254);
-    }
+    .network-level-row { display: flex; justify-content: center; align-items: flex-start; gap: 2rem; position: relative; min-width: max-content; padding-top: 2.5rem; }
+    .network-level-row:first-child { padding-top: 0; }
+    .network-level-row:not(:first-child)::before { content: ''; position: absolute; top: 0; left: 50%; width: 2px; height: 2.5rem; transform: translateX(-50%); background: rgb(221 214 254); }
+    .network-level-row:not(:first-child)::after { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: rgb(221 214 254); }
+    .network-level-row:not(:first-child) .network-level-card::before { content: ''; position: absolute; top: -2.5rem; left: 50%; width: 2px; height: 2.5rem; transform: translateX(-50%); background: rgb(221 214 254); }
 
     /* Horizontal: parent on the left, downlines extend to the right. */
     .network-tree.horizontal { width: max-content; min-width: 100%; }
     .network-tree.horizontal .network-node { display: flex; align-items: flex-start; gap: 2rem; }
     .network-tree.horizontal .network-node-content { flex: 0 0 360px; }
-    .network-tree.horizontal .network-node-children {
-        display: flex;
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 1rem;
-        margin-left: 2rem;
-        padding-left: 2rem;
-        position: relative;
-        border-left: 2px dashed rgb(237 233 254);
-    }
+    .network-tree.horizontal .network-node-children { display: flex; flex-direction: column; align-items: flex-start; gap: 1rem; margin-left: 2rem; padding-left: 2rem; position: relative; border-left: 2px dashed rgb(237 233 254); }
     .network-tree.horizontal .network-node-children > .network-node { position: relative; }
-    .network-tree.horizontal .network-node-children > .network-node::before {
-        content: '';
-        position: absolute;
-        left: -2rem;
-        top: 2rem;
-        width: 2rem;
-        height: 2px;
-        background: rgb(221 214 254);
-    }
+    .network-tree.horizontal .network-node-children > .network-node::before { content: ''; position: absolute; left: -2rem; top: 2rem; width: 2rem; height: 2px; background: rgb(221 214 254); }
 
     @media (max-width: 900px) {
-        .network-tree.vertical .network-node-content,
+        .network-level-row { justify-content: flex-start; gap: 1rem; }
+        .network-level-card { width: 320px; }
         .network-tree.horizontal .network-node-content { width: 320px; flex-basis: 320px; }
-        .network-tree.vertical .network-node-children { gap: 1rem; }
     }
 </style>
 
@@ -102,7 +56,7 @@
 
             <section class="rounded-2xl border border-violet-100 bg-gradient-to-r from-violet-50 to-indigo-50 p-5 sm:p-6">
                 <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                    <div><p class="text-sm font-black text-violet-900">Network view</p><p class="mt-1 max-w-3xl text-sm leading-6 text-violet-800"><strong>Vertical</strong>: main partner at the top, recruits underneath, and each recruit's downlines underneath them. <strong>Horizontal</strong>: main partner on the left, downlines extending to the right.</p></div>
+                    <div><p class="text-sm font-black text-violet-900">Network view</p><p class="mt-1 max-w-3xl text-sm leading-6 text-violet-800"><strong>Vertical</strong>: the hierarchy is grouped by level — the root is at the top, every direct recruit is on the next line, and every second-generation recruit is on the line below that. <strong>Horizontal</strong>: the parent is on the left and downlines extend to the right.</p></div>
                     <div class="inline-flex w-fit rounded-xl bg-white p-1 shadow-sm ring-1 ring-inset ring-violet-100" role="group" aria-label="Network tree layout">
                         <button type="button" @click="layout = 'vertical'" :class="layout === 'vertical' ? 'bg-violet-600 text-white shadow-sm' : 'text-gray-600 hover:bg-gray-50'" class="inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-xs font-black transition">Vertical</button>
                         <button type="button" @click="layout = 'horizontal'" :class="layout === 'horizontal' ? 'bg-violet-600 text-white shadow-sm' : 'text-gray-600 hover:bg-gray-50'" class="inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-xs font-black transition">Horizontal</button>
@@ -118,9 +72,43 @@
                     </div>
                     <div class="overflow-auto p-5 sm:p-8">
                         <div class="network-tree" :class="layout" style="min-width: 760px;">
-                            @foreach($tree['roots'] as $root)
-                                @include('network.node', ['node' => $root, 'children' => $tree['children'], 'depth' => 0])
-                            @endforeach
+                            {{-- Vertical mode deliberately renders by depth, so every partner at the same level shares one row. --}}
+                            <div x-show="layout === 'vertical'" class="space-y-0">
+                                @php
+                                    $levels = [collect($tree['roots'])];
+                                    $currentLevel = collect($tree['roots']);
+                                    $guard = 0;
+                                    while ($currentLevel->isNotEmpty() && $guard < 100) {
+                                        $nextLevel = collect();
+                                        foreach ($currentLevel as $levelNode) {
+                                            foreach ($tree['children']->get((string) $levelNode->id, collect()) as $child) {
+                                                $nextLevel->push($child);
+                                            }
+                                        }
+                                        if ($nextLevel->isEmpty()) {
+                                            break;
+                                        }
+                                        $levels[] = $nextLevel;
+                                        $currentLevel = $nextLevel;
+                                        $guard++;
+                                    }
+                                @endphp
+
+                                @foreach($levels as $levelIndex => $levelNodes)
+                                    <div class="network-level-row">
+                                        @foreach($levelNodes as $levelNode)
+                                            @include('network.card', ['node' => $levelNode, 'depth' => $levelIndex])
+                                        @endforeach
+                                    </div>
+                                @endforeach
+                            </div>
+
+                            {{-- Horizontal mode keeps the parent -> children recursive tree. --}}
+                            <div x-show="layout === 'horizontal'">
+                                @foreach($tree['roots'] as $root)
+                                    @include('network.node', ['node' => $root, 'children' => $tree['children'], 'depth' => 0])
+                                @endforeach
+                            </div>
                         </div>
                     </div>
                 </section>
