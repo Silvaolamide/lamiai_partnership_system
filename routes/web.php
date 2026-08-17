@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\BusinessController as AdminBusinessController;
+use App\Http\Controllers\Admin\BusinessPayoutController as AdminBusinessPayoutController;
 use App\Http\Controllers\Admin\CommissionController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\OrderController;
@@ -11,6 +12,7 @@ use App\Http\Controllers\BusinessDashboardController;
 use App\Http\Controllers\BusinessOnboardingController;
 use App\Http\Controllers\BusinessPartnerApprovalController;
 use App\Http\Controllers\BusinessPortalController;
+use App\Http\Controllers\BusinessPayoutController;
 use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\PartnerController;
 use App\Http\Controllers\PartnerDashboardController;
@@ -36,6 +38,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::middleware('business.approved')->group(function () {
         Route::get('/business/dashboard', [BusinessDashboardController::class, 'index'])->name('business.dashboard');
+        Route::get('/business/payouts', [BusinessPayoutController::class, 'index'])->name('business.payouts.index');
+        Route::post('/business/payouts', [BusinessPayoutController::class, 'store'])->name('business.payouts.store');
         Route::get('/business/programs', [BusinessPortalController::class, 'programs'])->name('business.programs.index');
         Route::get('/business/programs/{program}/edit', [BusinessPortalController::class, 'editProgram'])->name('business.programs.edit');
         Route::put('/business/programs/{program}', [BusinessPortalController::class, 'updateProgram'])->name('business.programs.update');
@@ -95,6 +99,11 @@ Route::middleware(['auth', 'role:super_admin'])->prefix('admin')->group(function
     Route::patch('/payouts/{payout}/approve', [AdminPayoutController::class, 'approve'])->name('admin.payouts.approve');
     Route::patch('/payouts/{payout}/reject', [AdminPayoutController::class, 'reject'])->name('admin.payouts.reject');
     Route::patch('/payouts/{payout}/process', [AdminPayoutController::class, 'process'])->name('admin.payouts.process');
+    Route::get('/business-payouts', [AdminBusinessPayoutController::class, 'index'])->name('admin.business-payouts.index');
+    Route::get('/business-payouts/{businessPayout}', [AdminBusinessPayoutController::class, 'show'])->name('admin.business-payouts.show');
+    Route::patch('/business-payouts/{businessPayout}/approve', [AdminBusinessPayoutController::class, 'approve'])->name('admin.business-payouts.approve');
+    Route::patch('/business-payouts/{businessPayout}/reject', [AdminBusinessPayoutController::class, 'reject'])->name('admin.business-payouts.reject');
+    Route::patch('/business-payouts/{businessPayout}/process', [AdminBusinessPayoutController::class, 'process'])->name('admin.business-payouts.process');
 });
 
 Route::get('/partner/apply', [PartnerController::class, 'create'])->name('partner.apply');
