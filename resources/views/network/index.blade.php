@@ -1,16 +1,70 @@
 <style>
-    .network-tree.vertical .network-node-children { display: flex; flex-direction: column; gap: 1rem; margin-top: 1rem; }
-    .network-tree.horizontal .network-node-children { display: flex; flex-direction: row; align-items: flex-start; gap: 2rem; margin-top: 0; margin-left: 3rem; padding-left: 2rem; border-left: 2px dashed rgb(237 233 254); }
+    /* Vertical: parent on top, downlines underneath, then their downlines underneath. */
+    .network-tree.vertical { width: max-content; min-width: 100%; }
+    .network-tree.vertical .network-node { display: flex; flex-direction: column; align-items: center; }
+    .network-tree.vertical .network-node-content { width: 360px; }
+    .network-tree.vertical .network-node-children {
+        display: flex;
+        flex-direction: row;
+        align-items: flex-start;
+        justify-content: center;
+        gap: 2rem;
+        width: max-content;
+        margin-top: 2.5rem;
+        padding-top: 2rem;
+        position: relative;
+    }
+    .network-tree.vertical .network-node-children::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 50%;
+        width: 2px;
+        height: 2rem;
+        transform: translateX(-50%);
+        background: rgb(221 214 254);
+    }
+    .network-tree.vertical .network-node-children > .network-node { position: relative; }
+    .network-tree.vertical .network-node-children > .network-node::before {
+        content: '';
+        position: absolute;
+        top: -2rem;
+        left: 50%;
+        width: 2px;
+        height: 2rem;
+        transform: translateX(-50%);
+        background: rgb(221 214 254);
+    }
+
+    /* Horizontal: parent on the left, downlines extend to the right. */
+    .network-tree.horizontal { width: max-content; min-width: 100%; }
     .network-tree.horizontal .network-node { display: flex; align-items: flex-start; gap: 2rem; }
-    .network-tree.horizontal .network-node > .network-node-content { flex: 0 0 360px; }
+    .network-tree.horizontal .network-node-content { flex: 0 0 360px; }
+    .network-tree.horizontal .network-node-children {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+        margin-left: 2rem;
+        padding-left: 2rem;
+        position: relative;
+        border-left: 2px dashed rgb(237 233 254);
+    }
     .network-tree.horizontal .network-node-children > .network-node { position: relative; }
-    .network-tree.horizontal .network-node-children > .network-node::before { content: ''; position: absolute; left: -2rem; top: 2rem; width: 2rem; height: 2px; background: rgb(221 214 254); }
-    .network-tree.horizontal .network-node-children .network-node-children { margin-left: 0; }
-    .network-tree.horizontal .network-node-children .network-node-children > .network-node { display: block; }
-    .network-tree.horizontal .network-node-children .network-node-children > .network-node::before { display: none; }
+    .network-tree.horizontal .network-node-children > .network-node::before {
+        content: '';
+        position: absolute;
+        left: -2rem;
+        top: 2rem;
+        width: 2rem;
+        height: 2px;
+        background: rgb(221 214 254);
+    }
+
     @media (max-width: 900px) {
-        .network-tree.horizontal .network-node-children { flex-direction: column; }
-        .network-tree.horizontal .network-node { display: block; }
+        .network-tree.vertical .network-node-content,
+        .network-tree.horizontal .network-node-content { width: 320px; flex-basis: 320px; }
+        .network-tree.vertical .network-node-children { gap: 1rem; }
     }
 </style>
 
@@ -48,7 +102,7 @@
 
             <section class="rounded-2xl border border-violet-100 bg-gradient-to-r from-violet-50 to-indigo-50 p-5 sm:p-6">
                 <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                    <div><p class="text-sm font-black text-violet-900">Network view</p><p class="mt-1 max-w-3xl text-sm leading-6 text-violet-800">Switch between a vertical hierarchy and a horizontal organization-style tree. Your preference is remembered on this device.</p></div>
+                    <div><p class="text-sm font-black text-violet-900">Network view</p><p class="mt-1 max-w-3xl text-sm leading-6 text-violet-800"><strong>Vertical</strong>: main partner at the top, recruits underneath, and each recruit's downlines underneath them. <strong>Horizontal</strong>: main partner on the left, downlines extending to the right.</p></div>
                     <div class="inline-flex w-fit rounded-xl bg-white p-1 shadow-sm ring-1 ring-inset ring-violet-100" role="group" aria-label="Network tree layout">
                         <button type="button" @click="layout = 'vertical'" :class="layout === 'vertical' ? 'bg-violet-600 text-white shadow-sm' : 'text-gray-600 hover:bg-gray-50'" class="inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-xs font-black transition">Vertical</button>
                         <button type="button" @click="layout = 'horizontal'" :class="layout === 'horizontal' ? 'bg-violet-600 text-white shadow-sm' : 'text-gray-600 hover:bg-gray-50'" class="inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-xs font-black transition">Horizontal</button>
