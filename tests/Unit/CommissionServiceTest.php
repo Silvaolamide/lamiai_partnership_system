@@ -228,7 +228,7 @@ class CommissionServiceTest extends TestCase
 
     public function test_commission_statistics()
     {
-        CommissionRule::create([
+        $rule = CommissionRule::create([
             'program_id' => $this->program->id,
             'level' => 1,
             'type' => 'percentage',
@@ -247,11 +247,32 @@ class CommissionServiceTest extends TestCase
             'joined_at' => now(),
         ]);
 
+        $orders = collect([
+            ['number' => 'ORD-STATS-1', 'total' => 100000, 'reference' => 'REF-STATS-1'],
+            ['number' => 'ORD-STATS-2', 'total' => 50000, 'reference' => 'REF-STATS-2'],
+            ['number' => 'ORD-STATS-3', 'total' => 30000, 'reference' => 'REF-STATS-3'],
+        ])->map(function ($data) use ($programPartner) {
+            return Order::create([
+                'order_number' => $data['number'],
+                'customer_id' => User::factory()->create()->id,
+                'program_id' => $this->program->id,
+                'partner_id' => $programPartner->id,
+                'subtotal' => $data['total'],
+                'discount' => 0,
+                'total' => $data['total'],
+                'currency' => 'NGN',
+                'status' => 'paid',
+                'paid_at' => now(),
+                'payment_provider' => 'test',
+                'payment_reference' => $data['reference'],
+            ]);
+        });
+
         Commission::create([
             'program_id' => $this->program->id,
-            'order_id' => 1,
+            'order_id' => $orders[0]->id,
             'partner_id' => $programPartner->id,
-            'rule_id' => 1,
+            'rule_id' => $rule->id,
             'level' => 1,
             'commission_type' => 'percentage',
             'rate' => 20,
@@ -262,9 +283,9 @@ class CommissionServiceTest extends TestCase
 
         Commission::create([
             'program_id' => $this->program->id,
-            'order_id' => 2,
+            'order_id' => $orders[1]->id,
             'partner_id' => $programPartner->id,
-            'rule_id' => 1,
+            'rule_id' => $rule->id,
             'level' => 1,
             'commission_type' => 'percentage',
             'rate' => 20,
@@ -276,9 +297,9 @@ class CommissionServiceTest extends TestCase
 
         Commission::create([
             'program_id' => $this->program->id,
-            'order_id' => 3,
+            'order_id' => $orders[2]->id,
             'partner_id' => $programPartner->id,
-            'rule_id' => 1,
+            'rule_id' => $rule->id,
             'level' => 1,
             'commission_type' => 'percentage',
             'rate' => 20,
