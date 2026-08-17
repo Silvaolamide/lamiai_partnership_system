@@ -1,53 +1,70 @@
 <?php
-use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\PartnershipProgramController;
-use App\Http\Controllers\BusinessOnboardingController;
-use App\Http\Controllers\BusinessDashboardController;
-use App\Http\Controllers\BusinessPortalController;
-use App\Http\Controllers\PartnerMarketplaceController;
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\ProductController;
-use App\Http\Controllers\ProductShowController;
-use App\Http\Controllers\PartnerController;
-use App\Http\Controllers\Admin\PartnerController as AdminPartnerController;
-use App\Http\Controllers\PartnerDashboardController;
-use App\Http\Controllers\CheckoutController;
-use App\Http\Controllers\PayoutController;
+
+use App\Http\Controllers\Admin\BusinessController as AdminBusinessController;
+use App\Http\Controllers\Admin\CommissionController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\OrderController;
-use App\Http\Controllers\Admin\CommissionController;
+use App\Http\Controllers\Admin\PartnerController as AdminPartnerController;
 use App\Http\Controllers\Admin\PayoutController as AdminPayoutController;
+use App\Http\Controllers\Admin\SettingsController as AdminSettingsController;
+use App\Http\Controllers\BusinessDashboardController;
+use App\Http\Controllers\BusinessOnboardingController;
+use App\Http\Controllers\BusinessPartnerApprovalController;
+use App\Http\Controllers\BusinessPortalController;
+use App\Http\Controllers\CheckoutController;
+use App\Http\Controllers\PartnerController;
+use App\Http\Controllers\PartnerDashboardController;
+use App\Http\Controllers\PartnerMarketplaceController;
+use App\Http\Controllers\PartnershipProgramController;
+use App\Http\Controllers\PayoutController;
+use App\Http\Controllers\ProductController;
+use App\Http\Controllers\ProductShowController;
+use App\Http\Controllers\ProfileController;
 use App\Models\PartnershipProgram;
+use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::get('/partner/dashboard', [PartnerDashboardController::class, 'index'])->name('partner.dashboard');
+    Route::get('/partner/dashboard', [PartnerDashboardController::class, 'index'])->middleware('partner.approved')->name('partner.dashboard');
+    Route::get('/partner/pending', fn () => view('partner.pending'))->name('partner.pending');
     Route::get('/partner/programs', [PartnerMarketplaceController::class, 'index'])->name('partner.marketplace.index');
     Route::get('/partner/programs/{program}', [PartnerMarketplaceController::class, 'show'])->name('partner.marketplace.show');
     Route::post('/partner/programs/{program}/join', [PartnerMarketplaceController::class, 'join'])->name('partner.marketplace.join');
-    Route::get('/partner/payouts', [PayoutController::class, 'index'])->name('partner.payouts.index');
-    Route::post('/partner/payouts', [PayoutController::class, 'store'])->name('partner.payouts.store');
+    Route::get('/partner/payouts', [PayoutController::class, 'index'])->middleware('partner.approved')->name('partner.payouts.index');
+    Route::post('/partner/payouts', [PayoutController::class, 'store'])->middleware('partner.approved')->name('partner.payouts.store');
 
-    Route::get('/business/dashboard', [BusinessDashboardController::class, 'index'])->name('business.dashboard');
-    Route::get('/business/programs', [BusinessPortalController::class, 'programs'])->name('business.programs.index');
-    Route::get('/business/programs/{program}/edit', [BusinessPortalController::class, 'editProgram'])->name('business.programs.edit');
-    Route::put('/business/programs/{program}', [BusinessPortalController::class, 'updateProgram'])->name('business.programs.update');
-    Route::patch('/business/programs/{program}/toggle', [BusinessPortalController::class, 'toggleProgram'])->name('business.programs.toggle');
-    Route::get('/business/products', [BusinessPortalController::class, 'products'])->name('business.products.index');
-    Route::get('/business/products/create', [BusinessPortalController::class, 'createProduct'])->name('business.products.create');
-    Route::post('/business/products', [BusinessPortalController::class, 'storeProduct'])->name('business.products.store');
-    Route::get('/business/products/{product}/edit', [BusinessPortalController::class, 'editProduct'])->name('business.products.edit');
-    Route::put('/business/products/{product}', [BusinessPortalController::class, 'updateProduct'])->name('business.products.update');
-    Route::get('/business/affiliates', [BusinessPortalController::class, 'affiliates'])->name('business.affiliates.index');
-    Route::get('/business/sales', [BusinessPortalController::class, 'sales'])->name('business.sales.index');
-    Route::get('/business/commissions', [BusinessPortalController::class, 'commissions'])->name('business.commissions.index');
-    Route::get('/business/onboarding/{step}', [BusinessOnboardingController::class, 'show'])->name('business.onboarding');
-    Route::post('/business/onboarding/{step}', [BusinessOnboardingController::class, 'store'])->name('business.onboarding.store');
+    Route::get('/business/pending', [BusinessOnboardingController::class, 'pending'])->name('business.pending');
+
+    Route::middleware('business.approved')->group(function () {
+        Route::get('/business/dashboard', [BusinessDashboardController::class, 'index'])->name('business.dashboard');
+        Route::get('/business/programs', [BusinessPortalController::class, 'programs'])->name('business.programs.index');
+        Route::get('/business/programs/{program}/edit', [BusinessPortalController::class, 'editProgram'])->name('business.programs.edit');
+        Route::put('/business/programs/{program}', [BusinessPortalController::class, 'updateProgram'])->name('business.programs.update');
+        Route::patch('/business/programs/{program}/toggle', [BusinessPortalController::class, 'toggleProgram'])->name('business.programs.toggle');
+        Route::get('/business/products', [BusinessPortalController::class, 'products'])->name('business.products.index');
+        Route::get('/business/products/create', [BusinessPortalController::class, 'createProduct'])->name('business.products.create');
+        Route::post('/business/products', [BusinessPortalController::class, 'storeProduct'])->name('business.products.store');
+        Route::get('/business/products/{product}/edit', [BusinessPortalController::class, 'editProduct'])->name('business.products.edit');
+        Route::put('/business/products/{product}', [BusinessPortalController::class, 'updateProduct'])->name('business.products.update');
+        Route::get('/business/affiliates', [BusinessPortalController::class, 'affiliates'])->name('business.affiliates.index');
+        Route::get('/business/sales', [BusinessPortalController::class, 'sales'])->name('business.sales.index');
+        Route::get('/business/commissions', [BusinessPortalController::class, 'commissions'])->name('business.commissions.index');
+        Route::patch('/business/programs/{program}/partners/{partner}/approve', [BusinessPartnerApprovalController::class, 'approve'])->name('business.affiliates.approve');
+        Route::patch('/business/programs/{program}/partners/{partner}/reject', [BusinessPartnerApprovalController::class, 'reject'])->name('business.affiliates.reject');
+
+        Route::get('/business/onboarding/{step}', [BusinessOnboardingController::class, 'show'])->name('business.onboarding');
+        Route::post('/business/onboarding/{step}', [BusinessOnboardingController::class, 'store'])->name('business.onboarding.store');
+    });
 });
 
 Route::get('/business/start', [BusinessOnboardingController::class, 'start'])->name('business.start');
 
 Route::middleware(['auth', 'role:super_admin'])->prefix('admin')->group(function () {
     Route::get('/', [AdminDashboardController::class, 'index'])->name('admin');
+    Route::get('/settings', [AdminSettingsController::class, 'edit'])->name('admin.settings');
+    Route::put('/settings', [AdminSettingsController::class, 'update'])->name('admin.settings.update');
+    Route::get('/businesses', [AdminBusinessController::class, 'index'])->name('admin.businesses.index');
+    Route::patch('/businesses/{business}/approve', [AdminBusinessController::class, 'approve'])->name('admin.businesses.approve');
+    Route::patch('/businesses/{business}/reject', [AdminBusinessController::class, 'reject'])->name('admin.businesses.reject');
     Route::get('/partners', [AdminPartnerController::class, 'index'])->name('admin.partners.index');
     Route::patch('/partners/{partner}/approve', [AdminPartnerController::class, 'approve'])->name('admin.partners.approve');
     Route::patch('/partners/{partner}/reject', [AdminPartnerController::class, 'reject'])->name('admin.partners.reject');
@@ -104,4 +121,5 @@ Route::middleware('auth')->group(function () {
     Route::post('/checkout/{orderId}/confirm-demo', [CheckoutController::class, 'confirm'])->name('checkout.confirm');
     Route::get('/order/{orderId}/success', [CheckoutController::class, 'success'])->name('order.success');
 });
+
 require __DIR__.'/auth.php';
