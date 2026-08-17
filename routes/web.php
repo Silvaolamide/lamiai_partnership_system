@@ -3,6 +3,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PartnershipProgramController;
 use App\Http\Controllers\BusinessOnboardingController;
 use App\Http\Controllers\BusinessDashboardController;
+use App\Http\Controllers\BusinessPortalController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProductShowController;
@@ -23,6 +24,18 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/partner/payouts', [PayoutController::class, 'store'])->name('partner.payouts.store');
 
     Route::get('/business/dashboard', [BusinessDashboardController::class, 'index'])->name('business.dashboard');
+    Route::get('/business/programs', [BusinessPortalController::class, 'programs'])->name('business.programs.index');
+    Route::get('/business/programs/{program}/edit', [BusinessPortalController::class, 'editProgram'])->name('business.programs.edit');
+    Route::put('/business/programs/{program}', [BusinessPortalController::class, 'updateProgram'])->name('business.programs.update');
+    Route::patch('/business/programs/{program}/toggle', [BusinessPortalController::class, 'toggleProgram'])->name('business.programs.toggle');
+    Route::get('/business/products', [BusinessPortalController::class, 'products'])->name('business.products.index');
+    Route::get('/business/products/create', [BusinessPortalController::class, 'createProduct'])->name('business.products.create');
+    Route::post('/business/products', [BusinessPortalController::class, 'storeProduct'])->name('business.products.store');
+    Route::get('/business/products/{product}/edit', [BusinessPortalController::class, 'editProduct'])->name('business.products.edit');
+    Route::put('/business/products/{product}', [BusinessPortalController::class, 'updateProduct'])->name('business.products.update');
+    Route::get('/business/affiliates', [BusinessPortalController::class, 'affiliates'])->name('business.affiliates.index');
+    Route::get('/business/sales', [BusinessPortalController::class, 'sales'])->name('business.sales.index');
+    Route::get('/business/commissions', [BusinessPortalController::class, 'commissions'])->name('business.commissions.index');
     Route::get('/business/onboarding/{step}', [BusinessOnboardingController::class, 'show'])->name('business.onboarding');
     Route::post('/business/onboarding/{step}', [BusinessOnboardingController::class, 'store'])->name('business.onboarding.store');
 });
@@ -67,28 +80,19 @@ Route::get('/partner/apply', [PartnerController::class, 'create'])->name('partne
 Route::post('/partner/apply', [PartnerController::class, 'store'])->name('partner.apply.store');
 
 Route::get('/', function () {
-    $programs = PartnershipProgram::query()
-        ->where('status', 'active')
-        ->with(['commissionRules' => fn ($query) => $query->where('status', true)->orderBy('priority')->orderBy('level')])
-        ->latest()
-        ->limit(6)
-        ->get();
-
+    $programs = PartnershipProgram::query()->where('status', 'active')->with(['commissionRules' => fn ($query) => $query->where('status', true)->orderBy('priority')->orderBy('level')])->latest()->limit(6)->get();
     return view('home', compact('programs'));
 });
 
 Route::get('/dashboard', fn () => view('dashboard'))->middleware(['auth', 'verified'])->name('dashboard');
-
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
-
 Route::get('/product/{slug}', [ProductShowController::class, 'show'])->name('product.show');
 Route::get('/checkout/paystack/callback', [CheckoutController::class, 'paystackCallback'])->name('checkout.paystack.callback');
 Route::post('/webhooks/paystack', [CheckoutController::class, 'paystackWebhook'])->name('webhooks.paystack');
-
 Route::middleware('auth')->group(function () {
     Route::post('/checkout', [CheckoutController::class, 'create'])->name('checkout.create');
     Route::get('/checkout/{orderId}', [CheckoutController::class, 'show'])->name('checkout.show');
@@ -96,5 +100,4 @@ Route::middleware('auth')->group(function () {
     Route::post('/checkout/{orderId}/confirm-demo', [CheckoutController::class, 'confirm'])->name('checkout.confirm');
     Route::get('/order/{orderId}/success', [CheckoutController::class, 'success'])->name('order.success');
 });
-
 require __DIR__.'/auth.php';
