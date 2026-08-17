@@ -100,8 +100,7 @@ class BusinessOnboardingController extends Controller
             return redirect()->route('business.onboarding', ['step' => 'profile']);
         }
 
-        $programId = null;
-        DB::transaction(function () use ($data, $request, &$programId) {
+        DB::transaction(function () use ($data, $request) {
             $product = Product::create([
                 'owner_id' => $request->user()->id,
                 'name' => $data['product']['name'],
@@ -126,7 +125,7 @@ class BusinessOnboardingController extends Controller
                 'attribution_window_days' => $data['commission']['attribution_window_days'],
                 'minimum_payout' => $data['commission']['minimum_payout'],
             ]);
-            $programId = $program->id;
+
             $program->products()->sync([$product->id]);
 
             foreach ([1 => $data['commission']['level_1'], 2 => $data['commission']['level_2'] ?? 0, 3 => $data['commission']['level_3'] ?? 0] as $level => $value) {
@@ -144,6 +143,6 @@ class BusinessOnboardingController extends Controller
         });
 
         $request->session()->forget(['business_onboarding', 'business_onboarding_intent']);
-        return redirect()->route('dashboard')->with('success', 'Your affiliate program is live.');
+        return redirect()->route('business.dashboard')->with('success', 'Your affiliate program is live.');
     }
 }
