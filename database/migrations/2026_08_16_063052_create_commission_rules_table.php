@@ -6,9 +6,6 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('commission_rules', function (Blueprint $table) {
@@ -27,10 +24,13 @@ return new class extends Migration
 
             $table->unsignedInteger('level')->default(0);
 
+            // Percentage is the default commission model used by the
+            // application's existing rules and keeps legacy rule creation
+            // compatible while still allowing explicit fixed commissions.
             $table->enum('commission_type', [
                 'percentage',
                 'fixed',
-            ]);
+            ])->default('percentage');
 
             $table->decimal('value', 15, 4);
 
@@ -53,9 +53,6 @@ return new class extends Migration
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('commission_rules');
