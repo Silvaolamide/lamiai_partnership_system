@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Models\BusinessPayout;
 use App\Models\Commission;
 use App\Models\CommissionRule;
 use App\Models\Order;
@@ -13,7 +12,6 @@ use App\Models\User;
 use App\Services\PartnerApprovalService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
 
 class PlatformChangesTest extends TestCase
@@ -98,7 +96,6 @@ class PlatformChangesTest extends TestCase
     public function test_admin_settings_are_protected_from_non_super_admins(): void
     {
         $user = User::factory()->create(['email_verified_at' => now()]);
-
         $this->actingAs($user)->get(route('admin.settings'))->assertForbidden();
     }
 
@@ -276,7 +273,7 @@ class PlatformChangesTest extends TestCase
         $this->assertDatabaseHas('business_payouts', ['amount' => 80000]);
     }
 
-    public function test_admin_charge_is_clamped_to_one_hundred_percent_when_reading_the_setting(): void
+    public function test_admin_charge_is_clamped_to_one_hundred_percent_for_payout_calculation(): void
     {
         PlatformSetting::setValue('payout_delay_days', 0);
         PlatformSetting::setValue('admin_charge_percent', 125);
@@ -284,9 +281,14 @@ class PlatformChangesTest extends TestCase
         $business = $this->business();
         [, , $order] = $this->paidOrder($business, null, 100000, now()->subDay());
 
-        $this->actingAs($business)->get(route('business.payouts.index'))->assertOk();
+        $this->actingAs($business)
+            ->post(route('business.payouts.store'), [
+                'order_ids' => [$order->id],
+                'method' => 'bank_transfer',
+            ])
+            ->assertStatus(422);
 
-        $this->assertSame(100.0, (float) PlatformSetting::getValue('admin_charge_percent'));
+        $this->assertDatabaseCount('business_payouts', 0);
     }
 
     public function test_admin_charge_is_applied_after_all_partner_commissions(): void
@@ -346,7 +348,6 @@ class PlatformChangesTest extends TestCase
             'method' => 'bank_transfer',
         ])->assertRedirect();
 
-        // 100,000 gross - 20,000 partner commission - 10,000 platform charge = 70,000.
         $this->assertDatabaseHas('business_payouts', [
             'business_id' => $business->id,
             'amount' => 70000,
