@@ -4,9 +4,9 @@
     .network-tree.vertical .network-level-row { display: flex; justify-content: center; align-items: flex-start; gap: 2rem; position: relative; min-width: max-content; padding-top: 3rem; }
     .network-tree.vertical .network-level-row:first-child { padding-top: 0; }
     .network-tree.vertical .network-level-card { position: relative; }
-    .network-tree.vertical .network-connectors { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; z-index: 0; }
-    .network-tree.vertical .network-level-row { z-index: 1; }
-    .network-tree.vertical .network-level-card { z-index: 2; }
+    .network-tree.vertical .network-connectors { position: absolute; inset: 0; display: block; pointer-events: none; overflow: visible; z-index: 1; }
+    .network-tree.vertical .network-level-row { z-index: 2; }
+    .network-tree.vertical .network-level-card { z-index: 3; }
 
     /* Horizontal: parent on the left, downlines extend to the right. */
     .network-tree.horizontal { width: max-content; min-width: 100%; }
@@ -39,22 +39,28 @@
         layout: localStorage.getItem('networkTreeLayout') || 'vertical',
         drawConnections() {
             if (this.layout !== 'vertical') return;
-            this.$nextTick(() => {
+            const draw = () => {
                 document.querySelectorAll('.network-tree.vertical').forEach(tree => {
                     const svg = tree.querySelector('.network-connectors');
                     if (!svg) return;
+
                     const cards = [...tree.querySelectorAll('.network-level-card[data-network-id]')];
+                    if (!cards.length) return;
+
                     const treeRect = tree.getBoundingClientRect();
-                    const width = Math.max(tree.scrollWidth, treeRect.width);
-                    const height = Math.max(tree.scrollHeight, treeRect.height);
+                    const width = Math.max(tree.scrollWidth, tree.clientWidth);
+                    const height = Math.max(tree.scrollHeight, tree.clientHeight);
                     svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
                     svg.setAttribute('width', width);
                     svg.setAttribute('height', height);
                     svg.innerHTML = '';
 
                     const byId = new Map(cards.map(card => [String(card.dataset.networkId), card]));
+
                     cards.forEach(child => {
-                        const parentId = String(child.dataset.networkParent || '');
+                        const parentId = String(child.dataset.networkParent || '').trim();
+                        if (!parentId) return;
+
                         const parent = byId.get(parentId);
                         if (!parent) return;
 
@@ -66,20 +72,27 @@
                         const y2 = childRect.top - treeRect.top;
 
                         const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-                        line.setAttribute('x1', x1);
-                        line.setAttribute('y1', y1);
-                        line.setAttribute('x2', x2);
-                        line.setAttribute('y2', y2);
-                        line.setAttribute('stroke', 'rgb(196 181 253)');
-                        line.setAttribute('stroke-width', '2');
+                        line.setAttribute('x1', String(x1));
+                        line.setAttribute('y1', String(y1));
+                        line.setAttribute('x2', String(x2));
+                        line.setAttribute('y2', String(y2));
+                        line.setAttribute('stroke', 'rgb(139 92 246)');
+                        line.setAttribute('stroke-width', '3');
                         line.setAttribute('stroke-linecap', 'round');
+                        line.setAttribute('vector-effect', 'non-scaling-stroke');
                         svg.appendChild(line);
                     });
+                });
+            };
+
+            this.$nextTick(() => {
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(draw);
                 });
             });
         }
     }"
-    x-init="$watch('layout', value => { localStorage.setItem('networkTreeLayout', value); drawConnections(); }); drawConnections(); window.addEventListener('resize', () => drawConnections())">
+    x-init="drawConnections(); $watch('layout', value => { localStorage.setItem('networkTreeLayout', value); drawConnections(); })">
         <div class="mx-auto max-w-7xl space-y-6 px-4 sm:px-6 lg:px-8">
             <section class="grid gap-4 sm:grid-cols-3">
                 <div class="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm"><p class="text-sm font-medium text-gray-500">Partners in view</p><p class="mt-2 text-3xl font-black text-gray-900">{{ number_format($totalPartners) }}</p></div>
