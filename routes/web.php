@@ -4,6 +4,7 @@ use App\Http\Controllers\PartnershipProgramController;
 use App\Http\Controllers\BusinessOnboardingController;
 use App\Http\Controllers\BusinessDashboardController;
 use App\Http\Controllers\BusinessPortalController;
+use App\Http\Controllers\PartnerMarketplaceController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProductShowController;
@@ -20,6 +21,9 @@ use App\Models\PartnershipProgram;
 
 Route::middleware(['auth'])->group(function () {
     Route::get('/partner/dashboard', [PartnerDashboardController::class, 'index'])->name('partner.dashboard');
+    Route::get('/partner/programs', [PartnerMarketplaceController::class, 'index'])->name('partner.marketplace.index');
+    Route::get('/partner/programs/{program}', [PartnerMarketplaceController::class, 'show'])->name('partner.marketplace.show');
+    Route::post('/partner/programs/{program}/join', [PartnerMarketplaceController::class, 'join'])->name('partner.marketplace.join');
     Route::get('/partner/payouts', [PayoutController::class, 'index'])->name('partner.payouts.index');
     Route::post('/partner/payouts', [PayoutController::class, 'store'])->name('partner.payouts.store');
 
