@@ -7,7 +7,8 @@
             </div>
             <div class="flex gap-2">
                 <a href="{{ route('admin.businesses.index') }}" class="rounded-xl border px-4 py-2 text-sm font-bold">Businesses</a>
-                <a href="{{ route('admin.settings') }}" class="rounded-xl bg-violet-600 px-4 py-2 text-sm font-bold text-white">Approval Settings</a>
+                <a href="{{ route('admin.business-payouts.index') }}" class="rounded-xl border px-4 py-2 text-sm font-bold">Business Payouts</a>
+                <a href="{{ route('admin.settings') }}" class="rounded-xl bg-violet-600 px-4 py-2 text-sm font-bold text-white">Settings</a>
             </div>
         </div>
     </x-slot>
@@ -46,14 +47,15 @@
                 @forelse ($programs as $program)<tr><td class="p-4 font-medium">{{ $program->name }}</td><td class="p-4">{{ ucfirst($program->status) }}</td><td class="p-4">{{ $program->partners_count }}</td><td class="p-4">{{ $program->products_count }}</td><td class="p-4">{{ $program->orders_count }}</td><td class="p-4">{{ number_format($program->sales ?? 0, 2) }}</td></tr>@empty<tr><td colspan="6" class="p-8 text-center text-gray-500">No programs yet.</td></tr>@endforelse
             </tbody></table></div></div>
 
-            <div class="grid grid-cols-2 md:grid-cols-7 gap-3">
+            <div class="grid grid-cols-2 md:grid-cols-8 gap-3">
                 <a class="bg-white rounded-xl border p-4 hover:bg-gray-50" href="{{ route('admin.partners.index') }}"><b>Partners</b><span class="block text-xs text-gray-500 mt-1">Approve & manage</span></a>
                 <a class="bg-white rounded-xl border p-4 hover:bg-gray-50" href="{{ route('admin.businesses.index') }}"><b>Businesses</b><span class="block text-xs text-gray-500 mt-1">Approve businesses</span></a>
                 <a class="bg-white rounded-xl border p-4 hover:bg-gray-50" href="{{ route('admin.programs.index') }}"><b>Programs</b><span class="block text-xs text-gray-500 mt-1">Configure programs</span></a>
                 <a class="bg-white rounded-xl border p-4 hover:bg-gray-50" href="{{ route('admin.products.index') }}"><b>Products</b><span class="block text-xs text-gray-500 mt-1">Manage catalog</span></a>
+                <a class="bg-white rounded-xl border p-4 hover:bg-gray-50" href="{{ route('admin.orders.index') }}"><b>Orders</b><span class="block text-xs text-gray-500 mt-1">Customer sales</span></a>
                 <a class="bg-white rounded-xl border p-4 hover:bg-gray-50" href="{{ route('admin.commissions.index') }}"><b>Commissions</b><span class="block text-xs text-gray-500 mt-1">Review earnings</span></a>
-                <a class="bg-white rounded-xl border p-4 hover:bg-gray-50" href="{{ route('admin.payouts.index') }}"><b>Payouts</b><span class="block text-xs text-gray-500 mt-1">Process payments</span></a>
-                <a class="bg-white rounded-xl border p-4 hover:bg-gray-50" href="{{ route('admin.settings') }}"><b>Settings</b><span class="block text-xs text-gray-500 mt-1">Approval rules</span></a>
+                <a class="bg-white rounded-xl border p-4 hover:bg-gray-50" href="{{ route('admin.payouts.index') }}"><b>Partner Payouts</b><span class="block text-xs text-gray-500 mt-1">Process commissions</span></a>
+                <a class="bg-white rounded-xl border p-4 hover:bg-gray-50" href="{{ route('admin.business-payouts.index') }}"><b>Business Payouts</b><span class="block text-xs text-gray-500 mt-1">Pay businesses</span></a>
             </div>
         </div>
     </div>
