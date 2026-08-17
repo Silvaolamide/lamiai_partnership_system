@@ -11,6 +11,7 @@ class Order extends Model
         'customer_id',
         'program_id',
         'partner_id',
+        'business_payout_id',
         'subtotal',
         'discount',
         'total',
@@ -42,10 +43,12 @@ class Order extends Model
 
     public function partner()
     {
-        return $this->belongsTo(
-            ProgramPartner::class,
-            'partner_id'
-        );
+        return $this->belongsTo(ProgramPartner::class, 'partner_id');
+    }
+
+    public function businessPayout()
+    {
+        return $this->belongsTo(BusinessPayout::class, 'business_payout_id');
     }
 
     public function items()
@@ -58,4 +61,3 @@ class Order extends Model
         return $this->hasMany(Commission::class);
     }
 }
-
