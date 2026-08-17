@@ -8,6 +8,7 @@ use App\Models\ProgramPartner;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 
 class PartnerController extends Controller
@@ -51,7 +52,6 @@ class PartnerController extends Controller
             'recruiter_code' => ['nullable', 'string', 'exists:program_partners,partner_code'],
         ]);
 
-        // A missing optional field is represented consistently as null.
         $recruiterCode = $validated['recruiter_code'] ?? null;
 
         if ($recruiterCode) {
@@ -67,7 +67,9 @@ class PartnerController extends Controller
             }
         }
 
-        DB::transaction(function () use ($validated, $recruiterCode) {
+        $user = null;
+
+        DB::transaction(function () use ($validated, $recruiterCode, &$user) {
             $user = User::create([
                 'name' => $validated['name'],
                 'email' => $validated['email'],
@@ -95,8 +97,10 @@ class PartnerController extends Controller
             ]);
         });
 
-        return redirect()
-            ->route('partner.apply')
-            ->with('success', 'Your application has been submitted and is awaiting approval.');
+        // Sign the new partner in so the dashboard is immediately available.
+        Auth::login($user);
+        $request->session()->regenerate();
+
+        return redirect()->route('partner.dashboard');
     }
 }
