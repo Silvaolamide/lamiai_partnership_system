@@ -9,51 +9,52 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
-public function up(): void
-{
-    Schema::create('payouts', function (Blueprint $table) {
-        $table->id();
+    public function up(): void
+    {
+        Schema::create('payouts', function (Blueprint $table) {
+            $table->id();
 
-        $table->foreignId('partner_id')
-            ->constrained('program_partners')
-            ->cascadeOnDelete();
+            $table->foreignId('partner_id')
+                ->constrained('program_partners')
+                ->cascadeOnDelete();
 
-        $table->foreignId('program_id')
-            ->constrained('partnership_programs')
-            ->cascadeOnDelete();
+            $table->foreignId('program_id')
+                ->constrained('partnership_programs')
+                ->cascadeOnDelete();
 
-        $table->decimal('amount', 15, 2);
+            $table->decimal('amount', 15, 2);
 
-        $table->string('currency', 3)->default('NGN');
+            $table->string('currency', 3)->default('NGN');
 
-        $table->string('method')->nullable();
+            $table->string('method')->nullable();
 
-        $table->enum('status', [
-            'requested',
-            'approved',
-            'processing',
-            'paid',
-            'rejected',
-            'failed',
-            'cancelled',
-        ])->default('requested');
+            $table->enum('status', [
+                'requested',
+                'approved',
+                'processing',
+                'processed',
+                'paid',
+                'rejected',
+                'failed',
+                'cancelled',
+            ])->default('requested');
 
-        $table->string('reference')->nullable()->unique();
+            $table->string('reference')->nullable()->unique();
 
-        $table->text('notes')->nullable();
+            $table->text('notes')->nullable();
 
-        $table->timestamp('requested_at')->nullable();
-        $table->timestamp('approved_at')->nullable();
-        $table->timestamp('processed_at')->nullable();
+            $table->timestamp('requested_at')->nullable();
+            $table->timestamp('approved_at')->nullable();
+            $table->timestamp('processed_at')->nullable();
 
-        $table->timestamps();
+            $table->timestamps();
 
-        $table->index([
-            'partner_id',
-            'status',
-        ]);
-    });
-}
+            $table->index([
+                'partner_id',
+                'status',
+            ]);
+        });
+    }
 
     /**
      * Reverse the migrations.
