@@ -15,6 +15,7 @@ class SettingsController extends Controller
         return view('admin.settings.index', [
             'partnerSuperAdminApprovalRequired' => (bool) PlatformSetting::getValue('partner_super_admin_approval_required', true),
             'payoutDelayDays' => (int) PlatformSetting::getValue('payout_delay_days', 7),
+            'adminChargePercent' => (float) PlatformSetting::getValue('admin_charge_percent', 0),
         ]);
     }
 
@@ -22,6 +23,7 @@ class SettingsController extends Controller
     {
         $data = $request->validate([
             'payout_delay_days' => ['required', 'integer', 'min:0', 'max:90'],
+            'admin_charge_percent' => ['required', 'numeric', 'min:0', 'max:100'],
         ]);
 
         PlatformSetting::setValue(
@@ -29,6 +31,7 @@ class SettingsController extends Controller
             $request->boolean('partner_super_admin_approval_required')
         );
         PlatformSetting::setValue('payout_delay_days', $data['payout_delay_days']);
+        PlatformSetting::setValue('admin_charge_percent', $data['admin_charge_percent']);
 
         ProgramPartner::with('program')
             ->where('status', 'pending')
