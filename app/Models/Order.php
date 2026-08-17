@@ -6,7 +6,30 @@ use Illuminate\Database\Eloquent\Model;
 
 class Order extends Model
 {
-    //
+    protected $fillable = [
+        'order_number',
+        'customer_id',
+        'program_id',
+        'partner_id',
+        'subtotal',
+        'discount',
+        'total',
+        'currency',
+        'status',
+        'payment_provider',
+        'payment_reference',
+        'paid_at',
+        'refunded_at',
+    ];
+
+    protected $casts = [
+        'subtotal' => 'decimal:2',
+        'discount' => 'decimal:2',
+        'total' => 'decimal:2',
+        'paid_at' => 'datetime',
+        'refunded_at' => 'datetime',
+    ];
+
     public function customer()
     {
         return $this->belongsTo(User::class, 'customer_id');
@@ -35,3 +58,4 @@ class Order extends Model
         return $this->hasMany(Commission::class);
     }
 }
+

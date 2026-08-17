@@ -9,7 +9,7 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 
-<body>
+<body class="bg-gray-50">
 
 <div class="max-w-xl mx-auto px-6 py-10">
 
@@ -20,23 +20,31 @@
     <p class="text-gray-600 mb-8">
         Promote our products and earn commissions on successful sales.
     </p>
-    @if(session('success'))
 
-        <div class="bg-green-100 text-green-700 p-4 rounded mb-6">
+    @if($recruiterError)
+        <div class="bg-red-100 text-red-700 p-4 rounded-lg mb-6">
+            <strong>Referral Error:</strong> {{ $recruiterError }}
+        </div>
+    @elseif($recruiterPartner)
+        <div class="bg-green-100 text-green-700 p-4 rounded-lg mb-6">
+            <strong>Recruiting Partner:</strong> 
+            You are applying to become a partner recruited by {{ $recruiterPartner->user->name }}.
+            Once approved, {{ $recruiterPartner->user->name }} will earn a commission when you make sales.
+        </div>
+    @endif
+
+    @if(session('success'))
+        <div class="bg-green-100 text-green-700 p-4 rounded-lg mb-6">
             {{ session('success') }}
         </div>
-
     @endif
+
     @if($errors->any())
-
-        <div class="bg-red-100 text-red-700 p-4 rounded mb-6">
-
+        <div class="bg-red-100 text-red-700 p-4 rounded-lg mb-6">
             @foreach($errors->all() as $error)
                 <p>{{ $error }}</p>
             @endforeach
-
         </div>
-
     @endif
 
     <form
@@ -48,7 +56,6 @@
         @csrf
 
         <div>
-
             <label class="block font-medium mb-2">
                 Full Name
             </label>
@@ -60,11 +67,9 @@
                 required
                 class="w-full border rounded-lg px-4 py-3"
             >
-
         </div>
 
         <div>
-
             <label class="block font-medium mb-2">
                 Email
             </label>
@@ -76,11 +81,9 @@
                 required
                 class="w-full border rounded-lg px-4 py-3"
             >
-
         </div>
 
         <div>
-
             <label class="block font-medium mb-2">
                 Phone / WhatsApp
             </label>
@@ -92,11 +95,9 @@
                 required
                 class="w-full border rounded-lg px-4 py-3"
             >
-
         </div>
 
         <div>
-
             <label class="block font-medium mb-2">
                 Password
             </label>
@@ -107,11 +108,9 @@
                 required
                 class="w-full border rounded-lg px-4 py-3"
             >
-
         </div>
 
         <div>
-
             <label class="block font-medium mb-2">
                 Partnership Program
             </label>
@@ -121,29 +120,32 @@
                 required
                 class="w-full border rounded-lg px-4 py-3"
             >
-
                 <option value="">
                     Select a program
                 </option>
 
                 @foreach($programs as $program)
-
                     <option
                         value="{{ $program->id }}"
                         @selected(old('program_id') == $program->id)
                     >
                         {{ $program->name }}
                     </option>
-
                 @endforeach
-
             </select>
-
         </div>
+
+        @if($recruiterCode)
+            <input
+                type="hidden"
+                name="recruiter_code"
+                value="{{ $recruiterCode }}"
+            >
+        @endif
 
         <button
             type="submit"
-            class="w-full bg-black text-white py-3 rounded-lg"
+            class="w-full bg-black text-white py-3 rounded-lg font-semibold hover:bg-gray-900 transition"
         >
             Apply as Partner
         </button>

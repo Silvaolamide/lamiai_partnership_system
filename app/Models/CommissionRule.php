@@ -6,7 +6,6 @@ use Illuminate\Database\Eloquent\Model;
 
 class CommissionRule extends Model
 {
-    //
     protected $fillable = [
         'program_id',
         'product_id',
@@ -18,6 +17,13 @@ class CommissionRule extends Model
         'status',
         'priority',
     ];
+
+    protected $casts = [
+        'value' => 'decimal:4',
+        'maximum_amount' => 'decimal:2',
+        'status' => 'boolean',
+    ];
+
     public function program()
     {
         return $this->belongsTo(PartnershipProgram::class);
@@ -33,3 +39,4 @@ class CommissionRule extends Model
         return $this->hasMany(Commission::class, 'rule_id');
     }
 }
+
