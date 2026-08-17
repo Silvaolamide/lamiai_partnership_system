@@ -12,12 +12,7 @@ use Illuminate\View\View;
 
 class BusinessOnboardingController extends Controller
 {
-    private const STEPS = [
-        'profile' => 'Business profile',
-        'product' => 'First product',
-        'commission' => 'Commission',
-        'publish' => 'Publish',
-    ];
+    private const STEPS = ['profile' => 'Business profile', 'product' => 'First product', 'commission' => 'Commission', 'publish' => 'Publish'];
 
     public function start(Request $request): RedirectResponse|View
     {
@@ -25,14 +20,12 @@ class BusinessOnboardingController extends Controller
             $request->session()->put('business_onboarding_intent', true);
             return redirect()->route('register');
         }
-
         return redirect()->route('business.onboarding', ['step' => 'profile']);
     }
 
     public function show(Request $request, string $step): View|RedirectResponse
     {
         abort_unless(array_key_exists($step, self::STEPS), 404);
-
         $data = $request->session()->get('business_onboarding', []);
         $user = $request->user();
 
@@ -44,36 +37,20 @@ class BusinessOnboardingController extends Controller
                 'business_phone' => $user->business_phone,
             ];
         }
-
-        if ($step !== 'profile' && empty($data['profile']['business_name'])) {
-            return redirect()->route('business.onboarding', ['step' => 'profile']);
-        }
-
-        if ($step === 'product' && empty($data['product']['name'])) {
-            $data['product']['name'] = '';
-        }
-
+        if ($step !== 'profile' && empty($data['profile']['business_name'])) return redirect()->route('business.onboarding', ['step' => 'profile']);
         if ($step === 'commission' && empty($data['commission']['level_1'])) {
             $data['commission']['level_1'] = 20;
             $data['commission']['level_2'] = 5;
             $data['commission']['level_3'] = 0;
         }
+        if ($step === 'publish' && empty($data['product']['name'])) return redirect()->route('business.onboarding', ['step' => 'product']);
 
-        if ($step === 'publish' && empty($data['product']['name'])) {
-            return redirect()->route('business.onboarding', ['step' => 'product']);
-        }
-
-        return view('business.onboarding', [
-            'step' => $step,
-            'steps' => self::STEPS,
-            'data' => $data,
-        ]);
+        return view('business.onboarding', ['step' => $step, 'steps' => self::STEPS, 'data' => $data]);
     }
 
     public function store(Request $request, string $step): RedirectResponse
     {
         abort_unless(array_key_exists($step, self::STEPS), 404);
-
         $data = $request->session()->get('business_onboarding', []);
 
         if ($step === 'profile') {
@@ -83,11 +60,9 @@ class BusinessOnboardingController extends Controller
                 'business_industry' => ['required', 'string', 'max:100'],
                 'business_phone' => ['nullable', 'string', 'max:40'],
             ]);
-
             $request->user()->update($validated);
             $data['profile'] = $validated;
             $request->session()->put('business_onboarding', $data);
-
             return redirect()->route('business.onboarding', ['step' => 'product']);
         }
 
@@ -98,43 +73,37 @@ class BusinessOnboardingController extends Controller
                 'price' => ['required', 'numeric', 'min:0'],
                 'currency' => ['required', 'string', 'size:3'],
             ]);
-
             $validated['slug'] = Str::slug($validated['name']);
             $base = $validated['slug'];
             $counter = 1;
-            while (Product::where('slug', $validated['slug'])->exists()) {
-                $validated['slug'] = $base . '-' . $counter++;
-            }
-
+            while (Product::where('slug', $validated['slug'])->exists()) $validated['slug'] = $base . '-' . $counter++;
             $data['product'] = $validated;
             $request->session()->put('business_onboarding', $data);
-
             return redirect()->route('business.onboarding', ['step' => 'commission']);
         }
 
         if ($step === 'commission') {
             $validated = $request->validate([
-                'level_1' => ['required', 'numeric', 'min:0', 'max:100'],
+                'level_1' => ['required', 'numeric', 'gt:0', 'max:100'],
                 'level_2' => ['nullable', 'numeric', 'min:0', 'max:100'],
                 'level_3' => ['nullable', 'numeric', 'min:0', 'max:100'],
                 'attribution_window_days' => ['required', 'integer', 'min:1', 'max:365'],
                 'minimum_payout' => ['required', 'numeric', 'min:0'],
             ]);
-
             $data['commission'] = $validated;
             $request->session()->put('business_onboarding', $data);
-
             return redirect()->route('business.onboarding', ['step' => 'publish']);
         }
 
         $request->validate(['publish' => ['accepted']]);
-
         if (empty($data['profile']['business_name']) || empty($data['product']['name']) || empty($data['commission']['level_1'])) {
             return redirect()->route('business.onboarding', ['step' => 'profile']);
         }
 
-        DB::transaction(function () use ($data, $request) {
+        $programId = null;
+        DB::transaction(function () use ($data, $request, &$programId) {
             $product = Product::create([
+                'owner_id' => $request->user()->id,
                 'name' => $data['product']['name'],
                 'slug' => $data['product']['slug'],
                 'description' => $data['product']['description'] ?? null,
@@ -143,26 +112,25 @@ class BusinessOnboardingController extends Controller
                 'status' => 'active',
             ]);
 
+            $baseSlug = Str::slug($data['profile']['business_name'] . '-affiliate-program');
+            $slug = $baseSlug;
+            $counter = 1;
+            while (PartnershipProgram::where('slug', $slug)->exists()) $slug = $baseSlug . '-' . $counter++;
+
             $program = PartnershipProgram::create([
+                'owner_id' => $request->user()->id,
                 'name' => $data['profile']['business_name'] . ' Affiliate Program',
-                'slug' => Str::slug($data['profile']['business_name'] . '-affiliate-program'),
+                'slug' => $slug,
                 'description' => 'Affiliate program for ' . $data['profile']['business_name'],
                 'status' => 'active',
                 'attribution_window_days' => $data['commission']['attribution_window_days'],
                 'minimum_payout' => $data['commission']['minimum_payout'],
             ]);
-
+            $programId = $program->id;
             $program->products()->sync([$product->id]);
 
-            foreach ([
-                1 => $data['commission']['level_1'],
-                2 => $data['commission']['level_2'] ?? 0,
-                3 => $data['commission']['level_3'] ?? 0,
-            ] as $level => $value) {
-                if ((float) $value <= 0) {
-                    continue;
-                }
-
+            foreach ([1 => $data['commission']['level_1'], 2 => $data['commission']['level_2'] ?? 0, 3 => $data['commission']['level_3'] ?? 0] as $level => $value) {
+                if ((float) $value <= 0) continue;
                 $program->commissionRules()->create([
                     'product_id' => $product->id,
                     'event' => 'sale',
@@ -175,9 +143,7 @@ class BusinessOnboardingController extends Controller
             }
         });
 
-        $request->session()->forget('business_onboarding');
-        $request->session()->forget('business_onboarding_intent');
-
-        return redirect()->route('admin')->with('success', 'Your affiliate program is live.');
+        $request->session()->forget(['business_onboarding', 'business_onboarding_intent']);
+        return redirect()->route('dashboard')->with('success', 'Your affiliate program is live.');
     }
 }
