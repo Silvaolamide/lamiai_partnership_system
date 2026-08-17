@@ -105,12 +105,18 @@ class BusinessOnboardingController extends Controller
             return redirect()->route('business.onboarding', ['step' => 'publish']);
         }
 
-        $request->validate(['publish' => ['accepted']]);
+        $request->validate([
+            'publish' => ['accepted'],
+            'partner_business_approval_required' => ['nullable', 'boolean'],
+        ]);
+
         if (empty($data['profile']['business_name']) || empty($data['product']['name']) || empty($data['commission']['level_1'])) {
             return redirect()->route('business.onboarding', ['step' => 'profile']);
         }
 
-        DB::transaction(function () use ($data, $request) {
+        $businessApprovalRequired = $request->boolean('partner_business_approval_required');
+
+        DB::transaction(function () use ($data, $request, $businessApprovalRequired) {
             $product = Product::create([
                 'owner_id' => $request->user()->id,
                 'name' => $data['product']['name'],
@@ -134,7 +140,7 @@ class BusinessOnboardingController extends Controller
                 'status' => 'active',
                 'attribution_window_days' => $data['commission']['attribution_window_days'],
                 'minimum_payout' => $data['commission']['minimum_payout'],
-                'settings' => ['partner_business_approval_required' => false],
+                'settings' => ['partner_business_approval_required' => $businessApprovalRequired],
             ]);
 
             $program->products()->sync([$product->id]);
