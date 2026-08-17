@@ -14,6 +14,7 @@ use App\Http\Controllers\BusinessPartnerApprovalController;
 use App\Http\Controllers\BusinessPortalController;
 use App\Http\Controllers\BusinessPayoutController;
 use App\Http\Controllers\CheckoutController;
+use App\Http\Controllers\NetworkController;
 use App\Http\Controllers\PartnerController;
 use App\Http\Controllers\PartnerDashboardController;
 use App\Http\Controllers\PartnerMarketplaceController;
@@ -58,6 +59,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/business/onboarding/{step}', [BusinessOnboardingController::class, 'show'])->name('business.onboarding');
         Route::post('/business/onboarding/{step}', [BusinessOnboardingController::class, 'store'])->name('business.onboarding.store');
     });
+
+    Route::get('/network', [NetworkController::class, 'index'])
+        ->middleware('role:super_admin|program_manager|partner')
+        ->name('network.index');
 });
 
 Route::get('/business/start', [BusinessOnboardingController::class, 'start'])->name('business.start');
