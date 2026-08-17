@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Affiliate Marketplace · LAMI AI</title>
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
+</head>
+<body class="min-h-screen bg-slate-50 text-slate-900">
+<div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+    <header class="mb-8 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+            <p class="text-sm font-bold uppercase tracking-[0.18em] text-blue-600">LAMI AI Affiliate Marketplace</p>
+            <h1 class="mt-2 text-4xl font-black tracking-tight sm:text-5xl">Find products worth promoting.</h1>
+            <p class="mt-3 max-w-2xl text-lg text-slate-600">Discover businesses looking for affiliates. Compare commissions, products and earning opportunities, then join the programs that fit your audience.</p>
+        </div>
+        <div class="flex gap-2">
+            <a href="{{ route('partner.dashboard') }}" class="rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white">My Dashboard</a>
+            <a href="{{ route('partner.payouts.index') }}" class="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold">Payouts</a>
+        </div>
+    </header>
+
+    <section class="mb-8 grid gap-4 md:grid-cols-3">
+        <div class="rounded-2xl border border-slate-200 bg-white p-5"><p class="text-sm font-semibold text-slate-500">Choose a program</p><p class="mt-1 text-xl font-bold">Promote products you understand</p></div>
+        <div class="rounded-2xl border border-slate-200 bg-white p-5"><p class="text-sm font-semibold text-slate-500">Know your upside</p><p class="mt-1 text-xl font-bold">See commission rates upfront</p></div>
+        <div class="rounded-2xl border border-slate-200 bg-white p-5"><p class="text-sm font-semibold text-slate-500">Start selling</p><p class="mt-1 text-xl font-bold">Get tracked referral links</p></div>
+    </section>
+
+    <div class="mb-5 flex items-center justify-between"><div><h2 class="text-2xl font-bold">Available programs</h2><p class="mt-1 text-sm text-slate-500">Active programs from businesses on LAMI AI.</p></div><span class="rounded-full bg-blue-50 px-3 py-1 text-sm font-semibold text-blue-700">{{ $programs->total() }} programs</span></div>
+
+    <div class="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+        @forelse($programs as $program)
+            @php
+                $rules = $program->commissionRules;
+                $level1 = $rules->where('level', 1)->first();
+                $level2 = $rules->where('level', 2)->first();
+                $joined = in_array($program->id, $joinedProgramIds);
+            @endphp
+            <article class="group overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl">
+                <div class="bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 p-6 text-white">
+                    <div class="flex items-start justify-between gap-3"><span class="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold">Affiliate Program</span><span class="text-xs text-slate-300">{{ $program->partners_count }} affiliates</span></div>
+                    <h3 class="mt-8 text-2xl font-black">{{ $program->name }}</h3>
+                    <p class="mt-2 text-sm text-slate-300">{{ $program->owner?->business_name ?: $program->owner?->name }}</p>
+                </div>
+                <div class="p-6">
+                    <p class="min-h-12 text-sm leading-6 text-slate-600">{{ Str::limit($program->description ?: 'Promote this business and earn commission on qualifying sales.', 120) }}</p>
+                    <div class="mt-5 grid grid-cols-2 gap-3">
+                        <div class="rounded-2xl bg-emerald-50 p-4"><p class="text-xs font-semibold uppercase tracking-wide text-emerald-700">Direct commission</p><p class="mt-1 text-2xl font-black text-emerald-900">{{ $level1 ? ($level1->commission_type === 'percentage' ? rtrim(rtrim(number_format($level1->value, 2), '0'), '.').'%' : '₦'.number_format($level1->value, 2)) : '—' }}</p></div>
+                        <div class="rounded-2xl bg-violet-50 p-4"><p class="text-xs font-semibold uppercase tracking-wide text-violet-700">Recruiter bonus</p><p class="mt-1 text-2xl font-black text-violet-900">{{ $level2 ? ($level2->commission_type === 'percentage' ? rtrim(rtrim(number_format($level2->value, 2), '0'), '.').'%' : '₦'.number_format($level2->value, 2)) : '—' }}</p></div>
+                    </div>
+                    <div class="mt-5"><p class="mb-2 text-xs font-bold uppercase tracking-wide text-slate-500">Products</p><div class="space-y-2">@foreach($program->products->take(3) as $product)<div class="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2"><span class="truncate text-sm font-semibold">{{ $product->name }}</span><span class="ml-3 text-sm font-bold">₦{{ number_format($product->price, 0) }}</span></div>@endforeach</div></div>
+                    <a href="{{ route('partner.marketplace.show', $program) }}" class="mt-6 flex w-full items-center justify-center rounded-xl bg-slate-900 px-4 py-3 text-sm font-bold text-white hover:bg-blue-700">{{ $joined ? 'View program' : 'View opportunity' }} →</a>
+                </div>
+            </article>
+        @empty
+            <div class="col-span-full rounded-3xl border border-dashed border-slate-300 bg-white p-12 text-center"><h3 class="text-xl font-bold">No affiliate programs are available yet</h3><p class="mt-2 text-slate-500">Check back soon for new businesses and products to promote.</p></div>
+        @endforelse
+    </div>
+
+    <div class="mt-8">{{ $programs->links() }}</div>
+</div>
+</body>
+</html>
