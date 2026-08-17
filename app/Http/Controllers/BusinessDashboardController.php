@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\BusinessPayout;
 use App\Models\Commission;
 use App\Models\Order;
 use App\Models\PartnershipProgram;
 use App\Models\Product;
+use App\Models\PlatformSetting;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -32,7 +34,7 @@ class BusinessDashboardController extends Controller
 
         $orders = Order::query()
             ->whereIn('program_id', $programIds)
-            ->with(['partner.user', 'customer', 'program'])
+            ->with(['partner.user', 'customer', 'program', 'commissions', 'businessPayout'])
             ->latest()
             ->get();
 
@@ -47,6 +49,28 @@ class BusinessDashboardController extends Controller
         $commissionTotal = (float) $commissions->whereNotIn('status', ['reversed', 'cancelled'])->sum('commission_amount');
         $paidCommission = (float) $commissions->where('status', 'paid')->sum('commission_amount');
         $pendingCommission = (float) $commissions->whereIn('status', ['available', 'pending', 'approved', 'payable'])->sum('commission_amount');
+
+        $delayDays = max(0, (int) PlatformSetting::getValue('payout_delay_days', 7));
+        $cutoff = now()->subDays($delayDays);
+        $eligibleBusinessOrders = $completedOrders->filter(function ($order) use ($cutoff) {
+            return $order->status === 'paid'
+                && !$order->business_payout_id
+                && $order->paid_at
+                && $order->paid_at->lte($cutoff)
+                && (!$order->partner_id || $order->commissions->isNotEmpty());
+        });
+
+        $businessAvailable = (float) $eligibleBusinessOrders->sum(function ($order) {
+            $commissionsForOrder = $order->commissions->whereNotIn('status', ['reversed', 'cancelled'])->sum('commission_amount');
+            return max(0, (float) $order->total - (float) $commissionsForOrder);
+        });
+
+        $businessPaid = (float) BusinessPayout::where('business_id', $ownerId)
+            ->whereIn('status', ['processed', 'paid'])
+            ->sum('amount');
+        $businessRequested = (float) BusinessPayout::where('business_id', $ownerId)
+            ->whereIn('status', ['requested', 'approved', 'processing'])
+            ->sum('amount');
 
         $topAffiliates = $commissions
             ->whereNotIn('status', ['reversed', 'cancelled'])
@@ -76,6 +100,10 @@ class BusinessDashboardController extends Controller
             'affiliates' => $programs->sum('partners_count'),
             'products' => $products->count(),
             'programs' => $programs->count(),
+            'business_available' => $businessAvailable,
+            'business_paid' => $businessPaid,
+            'business_requested' => $businessRequested,
+            'payout_delay_days' => $delayDays,
         ];
 
         return view('business.dashboard', compact(
