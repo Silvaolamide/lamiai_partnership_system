@@ -21,6 +21,7 @@ class BusinessPayoutController extends Controller
     private function eligibleOrders(Request $request)
     {
         $delayDays = max(0, (int) PlatformSetting::getValue('payout_delay_days', 7));
+        $adminChargePercent = min(100, max(0, (float) PlatformSetting::getValue('admin_charge_percent', 0)));
         $cutoff = now()->subDays($delayDays);
         $programIds = PartnershipProgram::where('owner_id', $this->ownerId($request))->pluck('id');
 
@@ -38,11 +39,16 @@ class BusinessPayoutController extends Controller
             ->filter(function (Order $order) {
                 return !$order->partner_id || $order->commissions->isNotEmpty();
             })
-            ->map(function (Order $order) {
+            ->map(function (Order $order) use ($adminChargePercent) {
+                $grossAmount = (float) $order->total;
                 $commissionTotal = (float) $order->commissions
                     ->whereNotIn('status', ['reversed', 'cancelled'])
                     ->sum('commission_amount');
-                $order->business_net_amount = max(0, round((float) $order->total - $commissionTotal, 2));
+                $adminCharge = round($grossAmount * ($adminChargePercent / 100), 2);
+                $order->admin_charge_percent = $adminChargePercent;
+                $order->admin_charge_amount = $adminCharge;
+                $order->gross_amount = $grossAmount;
+                $order->business_net_amount = max(0, round($grossAmount - $commissionTotal - $adminCharge, 2));
                 $order->commission_total = $commissionTotal;
                 return $order;
             })
