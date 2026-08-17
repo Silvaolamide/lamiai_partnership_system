@@ -32,6 +32,21 @@ return new class extends Migration
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+
+        // Preserve the access state of existing records created before this workflow existed.
+        DB::table('program_partners')
+            ->where('status', 'active')
+            ->update([
+                'super_admin_approved_at' => now(),
+                'business_approved_at' => now(),
+            ]);
+
+        DB::table('users')
+            ->whereIn('id', DB::table('model_has_roles')
+                ->join('roles', 'roles.id', '=', 'model_has_roles.role_id')
+                ->where('roles.name', 'program_manager')
+                ->pluck('model_id'))
+            ->update(['business_super_admin_approved_at' => now()]);
     }
 
     public function down(): void
