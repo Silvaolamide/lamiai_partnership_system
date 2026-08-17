@@ -4,11 +4,12 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\ProgramPartner;
+use App\Services\PartnerApprovalService;
 use Illuminate\Support\Str;
 
 class PartnerController extends Controller
 {
-    public function index()
+    public function index(PartnerApprovalService $approvalService)
     {
         $partners = ProgramPartner::with([
             'user',
@@ -18,24 +19,25 @@ class PartnerController extends Controller
         ->latest()
         ->paginate(20);
 
-        return view('admin.partners.index', compact('partners'));
+        return view('admin.partners.index', [
+            'partners' => $partners,
+            'superAdminApprovalRequired' => $approvalService->superAdminApprovalRequired(),
+        ]);
     }
 
-    public function approve(ProgramPartner $partner)
+    public function approve(ProgramPartner $partner, PartnerApprovalService $approvalService)
     {
-        if ($partner->status !== 'pending') {
-            return back()->with('error', 'This application has already been processed.');
+        if ($partner->status === 'rejected') {
+            return back()->with('error', 'This application has been rejected and cannot be approved.');
         }
 
-        $partner->update([
-            'status' => 'active',
-            'partner_code' => $this->generatePartnerCode(),
-            'approved_at' => now(),
-        ]);
+        $partner = $approvalService->approveBySuperAdmin($partner);
 
         return back()->with(
             'success',
-            $partner->user->name . ' has been approved as a partner.'
+            $partner->status === 'active'
+                ? $partner->user->name . ' has been fully approved as a partner.'
+                : $partner->user->name . ' has received super admin approval and is awaiting the remaining requirement(s).'
         );
     }
 
@@ -45,9 +47,7 @@ class PartnerController extends Controller
             return back()->with('error', 'This application has already been processed.');
         }
 
-        $partner->update([
-            'status' => 'rejected',
-        ]);
+        $partner->update(['status' => 'rejected']);
 
         return back()->with(
             'success',
@@ -59,9 +59,7 @@ class PartnerController extends Controller
     {
         do {
             $code = 'LAMI-' . Str::upper(Str::random(8));
-        } while (
-            ProgramPartner::where('partner_code', $code)->exists()
-        );
+        } while (ProgramPartner::where('partner_code', $code)->exists());
 
         return $code;
     }
