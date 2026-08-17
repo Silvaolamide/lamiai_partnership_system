@@ -15,17 +15,12 @@ use Illuminate\View\View;
 
 class RegisteredUserController extends Controller
 {
-    /**
-     * Display the registration view.
-     */
     public function create(): View
     {
         return view('auth.register');
     }
 
     /**
-     * Handle an incoming registration request.
-     *
      * @throws ValidationException
      */
     public function store(Request $request): RedirectResponse
@@ -36,6 +31,8 @@ class RegisteredUserController extends Controller
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
+        $businessIntent = $request->session()->pull('business_onboarding_intent', false);
+
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
@@ -43,8 +40,11 @@ class RegisteredUserController extends Controller
         ]);
 
         event(new Registered($user));
-
         Auth::login($user);
+
+        if ($businessIntent) {
+            return redirect()->route('business.onboarding', ['step' => 'profile']);
+        }
 
         return redirect(route('dashboard', absolute: false));
     }
