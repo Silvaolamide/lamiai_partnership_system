@@ -12,14 +12,10 @@ use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\Admin\OrderController;
 use App\Http\Controllers\Admin\CommissionController;
 
-
 Route::middleware(['auth'])->group(function () {
-
     Route::get('/partner/dashboard', [PartnerDashboardController::class, 'index'])
         ->name('partner.dashboard');
-
 });
-
 
 Route::middleware(['auth', 'role:super_admin'])->prefix('admin')->group(function () {
     Route::get('/partners', [AdminPartnerController::class, 'index'])
@@ -31,44 +27,41 @@ Route::middleware(['auth', 'role:super_admin'])->prefix('admin')->group(function
     Route::patch('/partners/{partner}/reject', [AdminPartnerController::class, 'reject'])
         ->name('admin.partners.reject');
 
-    // Admin orders management
     Route::get('/orders', [OrderController::class, 'index'])
         ->name('admin.orders.index');
-    
+
     Route::get('/orders/{order}', [OrderController::class, 'show'])
         ->name('admin.orders.show');
-    
+
     Route::patch('/orders/{order}/mark-paid', [OrderController::class, 'markPaid'])
         ->name('admin.orders.mark-paid');
-    
+
     Route::patch('/orders/{order}/cancel', [OrderController::class, 'cancel'])
         ->name('admin.orders.cancel');
-    
+
     Route::patch('/orders/{order}/refund', [OrderController::class, 'refund'])
         ->name('admin.orders.refund');
 
-    // Admin commissions management
     Route::get('/commissions', [CommissionController::class, 'index'])
         ->name('admin.commissions.index');
-    
+
     Route::get('/commissions/{commission}', [CommissionController::class, 'show'])
         ->name('admin.commissions.show');
-    
+
     Route::patch('/commissions/{commission}/approve', [CommissionController::class, 'approve'])
         ->name('admin.commissions.approve');
-    
+
     Route::patch('/commissions/{commission}/mark-payable', [CommissionController::class, 'markPayable'])
         ->name('admin.commissions.mark-payable');
-    
+
     Route::patch('/commissions/{commission}/reverse', [CommissionController::class, 'reverse'])
         ->name('admin.commissions.reverse');
-    
+
     Route::post('/commissions/bulk-approve', [CommissionController::class, 'bulkApprove'])
         ->name('admin.commissions.bulk-approve');
-    
+
     Route::post('/commissions/bulk-mark-payable', [CommissionController::class, 'bulkMarkPayable'])
         ->name('admin.commissions.bulk-mark-payable');
-
 });
 
 Route::get('/partner/apply', [PartnerController::class, 'create'])
@@ -81,6 +74,7 @@ Route::get('/admin/programs/{program}/edit', [
     PartnershipProgramController::class,
     'edit'
 ])->name('admin.programs.edit');
+
 Route::put('/admin/programs/{program}', [
     PartnershipProgramController::class,
     'update'
@@ -114,12 +108,11 @@ Route::middleware('auth')->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
-Route::middleware(['auth', 'role:super_admin'])->group(function () {
 
+Route::middleware(['auth', 'role:super_admin'])->group(function () {
     Route::get('/admin', function () {
         return view('admin.dashboard');
-    });
-
+    })->name('admin');
 });
 
 Route::get('/admin/programs', [
@@ -137,26 +130,21 @@ Route::post('/admin/programs', [
     'store'
 ])->name('admin.programs.store');
 
-// ===== PUBLIC PRODUCT & CHECKOUT ROUTES =====
-
-// Public product page with referral code support
 Route::get('/product/{slug}', [ProductShowController::class, 'show'])
     ->name('product.show');
 
-// Checkout page (requires auth)
 Route::middleware('auth')->group(function () {
     Route::post('/checkout', [CheckoutController::class, 'create'])
         ->name('checkout.create');
-    
+
     Route::get('/checkout/{orderId}', [CheckoutController::class, 'show'])
         ->name('checkout.show');
-    
+
     Route::post('/checkout/{orderId}/confirm', [CheckoutController::class, 'confirm'])
         ->name('checkout.confirm');
-    
+
     Route::get('/order/{orderId}/success', [CheckoutController::class, 'success'])
         ->name('order.success');
 });
-
 
 require __DIR__.'/auth.php';
