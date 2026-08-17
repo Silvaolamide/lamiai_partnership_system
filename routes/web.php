@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\PartnerController as AdminPartnerController;
 use App\Http\Controllers\PartnerDashboardController;
 use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\PayoutController;
+use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\OrderController;
 use App\Http\Controllers\Admin\CommissionController;
 use App\Http\Controllers\Admin\PayoutController as AdminPayoutController;
@@ -20,6 +21,7 @@ Route::middleware(['auth'])->group(function () {
 });
 
 Route::middleware(['auth', 'role:super_admin'])->prefix('admin')->group(function () {
+    Route::get('/', [AdminDashboardController::class, 'index'])->name('admin');
     Route::get('/partners', [AdminPartnerController::class, 'index'])->name('admin.partners.index');
     Route::patch('/partners/{partner}/approve', [AdminPartnerController::class, 'approve'])->name('admin.partners.approve');
     Route::patch('/partners/{partner}/reject', [AdminPartnerController::class, 'reject'])->name('admin.partners.reject');
@@ -57,9 +59,7 @@ Route::get('/admin/products/{product}/edit', [ProductController::class, 'edit'])
 Route::put('/admin/products/{product}', [ProductController::class, 'update'])->name('admin.products.update');
 
 Route::get('/', fn () => view('welcome'));
-Route::get('/dashboard', fn () => view('dashboard'))
-    ->middleware(['auth', 'verified'])
-    ->name('dashboard');
+Route::get('/dashboard', fn () => view('dashboard'))->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -67,16 +67,7 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
-Route::middleware(['auth', 'role:super_admin'])->group(function () {
-    Route::get('/admin', fn () => view('admin.dashboard'))->name('admin');
-});
-
-Route::get('/admin/programs', [PartnershipProgramController::class, 'index'])->name('admin.programs.index');
-Route::get('/admin/programs/create', [PartnershipProgramController::class, 'create'])->name('admin.programs.create');
-Route::post('/admin/programs', [PartnershipProgramController::class, 'store'])->name('admin.programs.store');
-
 Route::get('/product/{slug}', [ProductShowController::class, 'show'])->name('product.show');
-
 Route::get('/checkout/paystack/callback', [CheckoutController::class, 'paystackCallback'])->name('checkout.paystack.callback');
 Route::post('/webhooks/paystack', [CheckoutController::class, 'paystackWebhook'])->name('webhooks.paystack');
 
