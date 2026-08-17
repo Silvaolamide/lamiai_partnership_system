@@ -39,11 +39,15 @@ class RegisteredUserController extends Controller
             'password' => Hash::make($request->password),
         ]);
 
+        if ($businessIntent) {
+            $user->assignRole('program_manager');
+        }
+
         event(new Registered($user));
         Auth::login($user);
 
         if ($businessIntent) {
-            return redirect()->route('business.onboarding', ['step' => 'profile']);
+            return redirect()->route('business.onboarding');
         }
 
         return redirect(route('dashboard', absolute: false));
