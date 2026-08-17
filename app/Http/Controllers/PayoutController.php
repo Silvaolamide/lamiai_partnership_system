@@ -18,7 +18,10 @@ class PayoutController extends Controller
         $partnerIds = $partners->pluck('id');
 
         $payable = Commission::whereIn('partner_id', $partnerIds)
-            ->where('status', 'payable')
+            ->whereIn('status', ['available', 'approved', 'payable'])
+            ->where(function ($query) {
+                $query->whereNull('available_at')->orWhere('available_at', '<=', now());
+            })
             ->with(['program', 'order'])
             ->orderBy('created_at')
             ->get();
@@ -53,13 +56,16 @@ class PayoutController extends Controller
         DB::transaction(function () use ($validated, $partnerIds) {
             $commissions = Commission::whereIn('id', $validated['commission_ids'])
                 ->whereIn('partner_id', $partnerIds)
-                ->where('status', 'payable')
+                ->whereIn('status', ['available', 'approved', 'payable'])
+                ->where(function ($query) {
+                    $query->whereNull('available_at')->orWhere('available_at', '<=', now());
+                })
                 ->with('order')
                 ->lockForUpdate()
                 ->get();
 
             if ($commissions->count() !== count($validated['commission_ids'])) {
-                abort(422, 'One or more selected commissions are no longer payable.');
+                abort(422, 'One or more selected commissions are not yet payable or are no longer available.');
             }
 
             if ($commissions->pluck('program_id')->unique()->count() !== 1) {
