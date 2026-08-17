@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Order;
 use App\Models\Commission;
 use App\Models\CommissionRule;
+use App\Models\PlatformSetting;
 use App\Models\ProgramPartner;
 use Illuminate\Support\Facades\DB;
 use Exception;
@@ -52,10 +53,7 @@ class CommissionService
                 $commissions[] = $directCommission;
             }
 
-            $commissions = array_merge(
-                $commissions,
-                $this->generateHierarchyCommissions($order)
-            );
+            $commissions = array_merge($commissions, $this->generateHierarchyCommissions($order));
 
             $totalAmount = round(
                 collect($commissions)->sum(fn ($commission) => (float) $commission->commission_amount),
@@ -74,15 +72,18 @@ class CommissionService
         });
     }
 
+    private function commissionAvailableAt(Order $order)
+    {
+        $delayDays = max(0, (int) PlatformSetting::getValue('payout_delay_days', 7));
+        $base = $order->paid_at ?: now();
+
+        return $base->copy()->addDays($delayDays);
+    }
+
     private function generateDirectCommission(Order $order)
     {
         $rule = $this->resolveRule($order, 1);
-
-        if (!$rule) {
-            return null;
-        }
-
-        $commissionAmount = $this->calculateCommission($order->total, $rule);
+        if (!$rule) return null;
 
         return Commission::create([
             'program_id' => $order->program_id,
@@ -94,9 +95,9 @@ class CommissionService
             'commission_type' => $rule->commission_type,
             'rate' => $rule->value,
             'base_amount' => $order->total,
-            'commission_amount' => $commissionAmount,
+            'commission_amount' => $this->calculateCommission($order->total, $rule),
             'status' => 'available',
-            'available_at' => now(),
+            'available_at' => $this->commissionAvailableAt($order),
         ]);
     }
 
@@ -108,18 +109,10 @@ class CommissionService
 
         while ($currentPartner && $currentPartner->parent_partner_id) {
             $parentPartner = $currentPartner->parentPartner;
-
-            if (!$parentPartner || $parentPartner->status !== 'active') {
-                break;
-            }
+            if (!$parentPartner || $parentPartner->status !== 'active') break;
 
             $rule = $this->resolveRule($order, $level);
-
-            if (!$rule) {
-                break;
-            }
-
-            $commissionAmount = $this->calculateCommission($order->total, $rule);
+            if (!$rule) break;
 
             $commissions[] = Commission::create([
                 'program_id' => $order->program_id,
@@ -131,9 +124,9 @@ class CommissionService
                 'commission_type' => $rule->commission_type,
                 'rate' => $rule->value,
                 'base_amount' => $order->total,
-                'commission_amount' => $commissionAmount,
+                'commission_amount' => $this->calculateCommission($order->total, $rule),
                 'status' => 'available',
-                'available_at' => now(),
+                'available_at' => $this->commissionAvailableAt($order),
             ]);
 
             $currentPartner = $parentPartner;
@@ -143,10 +136,6 @@ class CommissionService
         return $commissions;
     }
 
-    /**
-     * Prefer a product-specific rule. Fall back to the program-wide rule.
-     * Higher priority wins within either scope.
-     */
     private function resolveRule(Order $order, int $level): ?CommissionRule
     {
         $productId = $order->items->first()?->product_id;
@@ -159,10 +148,7 @@ class CommissionService
                 ->where('event', 'sale')
                 ->orderByDesc('priority')
                 ->first();
-
-            if ($productRule) {
-                return $productRule;
-            }
+            if ($productRule) return $productRule;
         }
 
         return CommissionRule::where('program_id', $order->program_id)
@@ -190,7 +176,7 @@ class CommissionService
     public function getPendingCommissionAmount(ProgramPartner $partner)
     {
         return (float) Commission::where('partner_id', $partner->id)
-            ->where('status', 'available')
+            ->whereIn('status', ['available', 'approved', 'payable'])
             ->sum('commission_amount');
     }
 
@@ -212,9 +198,7 @@ class CommissionService
     {
         $pending = $this->getPendingCommissionAmount($partner);
         $paid = $this->getPaidCommissionAmount($partner);
-        $reversed = (float) Commission::where('partner_id', $partner->id)
-            ->where('status', 'reversed')
-            ->sum('commission_amount');
+        $reversed = (float) Commission::where('partner_id', $partner->id)->where('status', 'reversed')->sum('commission_amount');
         $total = $this->getTotalCommissionAmount($partner);
 
         return [
@@ -223,15 +207,9 @@ class CommissionService
             'available' => $pending,
             'reversed' => $reversed,
             'total' => $total,
-            'pending_count' => Commission::where('partner_id', $partner->id)
-                ->where('status', 'available')
-                ->count(),
-            'paid_count' => Commission::where('partner_id', $partner->id)
-                ->where('status', 'paid')
-                ->count(),
-            'reversed_count' => Commission::where('partner_id', $partner->id)
-                ->where('status', 'reversed')
-                ->count(),
+            'pending_count' => Commission::where('partner_id', $partner->id)->whereIn('status', ['available', 'approved', 'payable'])->count(),
+            'paid_count' => Commission::where('partner_id', $partner->id)->where('status', 'paid')->count(),
+            'reversed_count' => Commission::where('partner_id', $partner->id)->where('status', 'reversed')->count(),
         ];
     }
 }
