@@ -11,11 +11,15 @@
         <div class="mb-8">
             <p class="text-sm font-semibold text-blue-600">LAMI AI</p>
             <h1 class="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">Complete your purchase</h1>
-            <p class="mt-2 text-slate-600">Review your order before completing payment.</p>
+            <p class="mt-2 text-slate-600">Review your order and complete secure payment.</p>
         </div>
 
         @if(session('error'))
             <div class="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-red-800">{{ session('error') }}</div>
+        @endif
+
+        @if(session('warning'))
+            <div class="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-800">{{ session('warning') }}</div>
         @endif
 
         <div class="grid gap-6 lg:grid-cols-3">
@@ -26,7 +30,9 @@
                             <p class="text-sm text-slate-500">Order</p>
                             <p class="font-mono text-lg font-bold">{{ $order->order_number }}</p>
                         </div>
-                        <span class="rounded-full bg-amber-100 px-3 py-1 text-sm font-semibold text-amber-800">Pending payment</span>
+                        <span class="rounded-full px-3 py-1 text-sm font-semibold {{ $order->status === 'paid' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800' }}">
+                            {{ ucfirst($order->status) }}
+                        </span>
                     </div>
                 </section>
 
@@ -78,19 +84,27 @@
                     </div>
 
                     @if($order->status === 'pending')
-                        <form action="{{ route('checkout.confirm', ['orderId' => $order->id]) }}" method="POST" class="mt-8">
+                        <form action="{{ route('checkout.paystack', ['orderId' => $order->id]) }}" method="POST" class="mt-8">
                             @csrf
-                            <input type="hidden" name="payment_method" value="demo">
-
-                            <div class="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
-                                <p class="font-semibold">Demo payment</p>
-                                <p class="mt-1">This is the development payment flow. A real payment gateway will replace this before production.</p>
-                            </div>
-
-                            <button type="submit" class="mt-5 w-full rounded-xl bg-blue-600 px-5 py-3.5 font-semibold text-white shadow-sm transition hover:bg-blue-700 hover:shadow-md">
-                                Complete demo purchase
+                            <button type="submit" class="w-full rounded-xl bg-blue-600 px-5 py-3.5 font-semibold text-white shadow-sm transition hover:bg-blue-700 hover:shadow-md">
+                                Pay securely with Paystack
                             </button>
                         </form>
+
+                        <p class="mt-3 text-center text-xs text-slate-500">Card, bank transfer and other available Paystack channels will be shown at checkout.</p>
+
+                        @if(app()->environment('local'))
+                            <details class="mt-6 rounded-xl border border-dashed border-slate-300 p-4">
+                                <summary class="cursor-pointer text-sm font-semibold text-slate-600">Developer testing</summary>
+                                <form action="{{ route('checkout.confirm', ['orderId' => $order->id]) }}" method="POST" class="mt-4">
+                                    @csrf
+                                    <input type="hidden" name="payment_method" value="demo">
+                                    <button type="submit" class="w-full rounded-lg bg-slate-800 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-900">
+                                        Complete demo payment
+                                    </button>
+                                </form>
+                            </details>
+                        @endif
                     @else
                         <div class="mt-6 rounded-xl bg-emerald-50 p-4 text-sm text-emerald-800">
                             Payment received. Reference: <span class="font-mono font-semibold">{{ $order->payment_reference }}</span>
