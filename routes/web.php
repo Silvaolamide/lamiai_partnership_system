@@ -60,8 +60,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/business/onboarding/{step}', [BusinessOnboardingController::class, 'store'])->name('business.onboarding.store');
     });
 
+    // The network tree contains private recruitment relationships. It is
+    // intentionally limited to super admins and partners; business users do
+    // not get platform-wide visibility into partner genealogy.
     Route::get('/network', [NetworkController::class, 'index'])
-        ->middleware('role:super_admin|program_manager|partner')
+        ->middleware('role:super_admin|partner')
         ->name('network.index');
 });
 
