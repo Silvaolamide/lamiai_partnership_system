@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\PartnershipProgram;
 use App\Models\ProgramPartner;
 use Illuminate\Http\Request;
-use Illuminate\Support\Collection;
 
 class NetworkController extends Controller
 {
@@ -14,11 +13,13 @@ class NetworkController extends Controller
         $user = $request->user();
 
         abort_unless(
-            $user->hasAnyRole(['super_admin', 'program_manager', 'partner']),
+            $user->hasAnyRole(['super_admin', 'partner']),
             403
         );
 
         if ($user->hasRole('super_admin')) {
+            // Super admins can inspect the complete recruitment network across
+            // every business/program on the platform.
             $programs = PartnershipProgram::query()
                 ->with('owner:id,name,business_name')
                 ->orderBy('name')
@@ -33,30 +34,15 @@ class NetworkController extends Controller
 
             $title = 'Partner Recruitment Network';
             $subtitle = 'See every affiliate and the partners they have recruited across the platform.';
-        } elseif ($user->hasRole('program_manager')) {
-            $programs = PartnershipProgram::query()
-                ->where('owner_id', $user->id)
-                ->with('owner:id,name,business_name')
-                ->orderBy('name')
-                ->get();
-
-            $partners = ProgramPartner::query()
-                ->whereIn('program_id', $programs->pluck('id'))
-                ->with('user:id,name,email')
-                ->orderBy('program_id')
-                ->orderBy('parent_partner_id')
-                ->orderBy('id')
-                ->get();
-
-            $title = 'Affiliate Recruitment Network';
-            $subtitle = 'See how your affiliates are recruiting and growing your sales network.';
         } else {
-            $partners = ProgramPartner::query()
+            // A partner can only see their own recruitment tree. Start with
+            // their memberships, then recursively include descendants only.
+            $myPartners = ProgramPartner::query()
                 ->where('user_id', $user->id)
                 ->with('program.owner:id,name,business_name')
                 ->get();
 
-            $programIds = $partners->pluck('program_id')->unique()->values();
+            $programIds = $myPartners->pluck('program_id')->unique()->values();
             $programs = PartnershipProgram::query()
                 ->whereIn('id', $programIds)
                 ->with('owner:id,name,business_name')
@@ -71,13 +57,14 @@ class NetworkController extends Controller
                 ->orderBy('id')
                 ->get();
 
-            $myIds = $partners->pluck('id')->flip();
-            $visibleIds = $myIds->keys()->flip();
+            $visibleIds = $myPartners->pluck('id')->flip();
 
-            // Include every descendant of the current partner in each program.
             do {
                 $newIds = $allNetworkPartners
-                    ->filter(fn (ProgramPartner $partner) => $partner->parent_partner_id && $visibleIds->has($partner->parent_partner_id))
+                    ->filter(fn (ProgramPartner $partner) =>
+                        $partner->parent_partner_id !== null
+                        && $visibleIds->has($partner->parent_partner_id)
+                    )
                     ->pluck('id')
                     ->reject(fn ($id) => $visibleIds->has($id));
 
@@ -98,7 +85,7 @@ class NetworkController extends Controller
             $programPartners = $partners->where('program_id', $program->id)->values();
             $children = $programPartners->groupBy(fn (ProgramPartner $partner) => (string) ($partner->parent_partner_id ?? 'root'));
 
-            $roots = $programPartners->filter(function (ProgramPartner $partner) use ($children, $user) {
+            $roots = $programPartners->filter(function (ProgramPartner $partner) use ($user) {
                 if ($user->hasRole('partner')) {
                     return (int) $partner->user_id === (int) $user->id;
                 }
