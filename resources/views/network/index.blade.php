@@ -10,7 +10,7 @@
         </div>
     </x-slot>
 
-    <div class="py-8">
+    <div class="py-8" x-data="{ layout: localStorage.getItem('networkTreeLayout') || 'vertical' }" x-init="$watch('layout', value => localStorage.setItem('networkTreeLayout', value))">
         <div class="mx-auto max-w-7xl space-y-6 px-4 sm:px-6 lg:px-8">
             <section class="grid gap-4 sm:grid-cols-3">
                 <div class="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
@@ -46,14 +46,20 @@
             @endif
 
             <section class="rounded-2xl border border-violet-100 bg-gradient-to-r from-violet-50 to-indigo-50 p-5 sm:p-6">
-                <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                     <div>
-                        <p class="text-sm font-black text-violet-900">How to read the network</p>
-                        <p class="mt-1 max-w-3xl text-sm leading-6 text-violet-800">Every card is a partner. A connector below a partner represents someone that partner recruited. Expand and collapse branches to focus on the part of the network you need.</p>
+                        <p class="text-sm font-black text-violet-900">Network view</p>
+                        <p class="mt-1 max-w-3xl text-sm leading-6 text-violet-800">Switch between a compact vertical hierarchy and a horizontal organization-style tree. Your choice is remembered on this device.</p>
                     </div>
-                    <div class="flex shrink-0 gap-2 text-xs font-bold">
-                        <span class="rounded-full bg-white px-3 py-2 text-gray-600 shadow-sm">Direct recruit</span>
-                        <span class="rounded-full bg-violet-600 px-3 py-2 text-white shadow-sm">Recruiter</span>
+                    <div class="inline-flex w-fit rounded-xl bg-white p-1 shadow-sm ring-1 ring-inset ring-violet-100" role="group" aria-label="Network tree layout">
+                        <button type="button" @click="layout = 'vertical'" :class="layout === 'vertical' ? 'bg-violet-600 text-white shadow-sm' : 'text-gray-600 hover:bg-gray-50'" class="inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-xs font-black transition">
+                            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M7 9l5-4 5 4M7 19h10"/><circle cx="12" cy="4" r="2"/><circle cx="7" cy="20" r="2"/><circle cx="17" cy="20" r="2"/></svg>
+                            Vertical
+                        </button>
+                        <button type="button" @click="layout = 'horizontal'" :class="layout === 'horizontal' ? 'bg-violet-600 text-white shadow-sm' : 'text-gray-600 hover:bg-gray-50'" class="inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-xs font-black transition">
+                            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 12h14M9 7l-4 5 4 5M19 7v10"/><circle cx="4" cy="12" r="2"/><circle cx="20" cy="7" r="2"/><circle cx="20" cy="17" r="2"/></svg>
+                            Horizontal
+                        </button>
                     </div>
                 </div>
             </section>
@@ -72,7 +78,7 @@
                     </div>
 
                     <div class="overflow-x-auto p-5 sm:p-8">
-                        <div class="min-w-[760px]">
+                        <div class="min-w-[760px]" :class="layout === 'horizontal' ? 'min-h-[320px]' : ''">
                             @foreach($tree['roots'] as $root)
                                 @include('network.node', ['node' => $root, 'children' => $tree['children'], 'depth' => 0])
                             @endforeach
