@@ -8,12 +8,15 @@ use App\Http\Controllers\PartnerController;
 use App\Http\Controllers\Admin\PartnerController as AdminPartnerController;
 use App\Http\Controllers\PartnerDashboardController;
 use App\Http\Controllers\CheckoutController;
+use App\Http\Controllers\PayoutController;
 use App\Http\Controllers\Admin\OrderController;
 use App\Http\Controllers\Admin\CommissionController;
+use App\Http\Controllers\Admin\PayoutController as AdminPayoutController;
 
 Route::middleware(['auth'])->group(function () {
-    Route::get('/partner/dashboard', [PartnerDashboardController::class, 'index'])
-        ->name('partner.dashboard');
+    Route::get('/partner/dashboard', [PartnerDashboardController::class, 'index'])->name('partner.dashboard');
+    Route::get('/partner/payouts', [PayoutController::class, 'index'])->name('partner.payouts.index');
+    Route::post('/partner/payouts', [PayoutController::class, 'store'])->name('partner.payouts.store');
 });
 
 Route::middleware(['auth', 'role:super_admin'])->prefix('admin')->group(function () {
@@ -34,6 +37,12 @@ Route::middleware(['auth', 'role:super_admin'])->prefix('admin')->group(function
     Route::patch('/commissions/{commission}/reverse', [CommissionController::class, 'reverse'])->name('admin.commissions.reverse');
     Route::post('/commissions/bulk-approve', [CommissionController::class, 'bulkApprove'])->name('admin.commissions.bulk-approve');
     Route::post('/commissions/bulk-mark-payable', [CommissionController::class, 'bulkMarkPayable'])->name('admin.commissions.bulk-mark-payable');
+
+    Route::get('/payouts', [AdminPayoutController::class, 'index'])->name('admin.payouts.index');
+    Route::get('/payouts/{payout}', [AdminPayoutController::class, 'show'])->name('admin.payouts.show');
+    Route::patch('/payouts/{payout}/approve', [AdminPayoutController::class, 'approve'])->name('admin.payouts.approve');
+    Route::patch('/payouts/{payout}/reject', [AdminPayoutController::class, 'reject'])->name('admin.payouts.reject');
+    Route::patch('/payouts/{payout}/process', [AdminPayoutController::class, 'process'])->name('admin.payouts.process');
 });
 
 Route::get('/partner/apply', [PartnerController::class, 'create'])->name('partner.apply');
@@ -66,21 +75,15 @@ Route::get('/admin/programs', [PartnershipProgramController::class, 'index'])->n
 Route::get('/admin/programs/create', [PartnershipProgramController::class, 'create'])->name('admin.programs.create');
 Route::post('/admin/programs', [PartnershipProgramController::class, 'store'])->name('admin.programs.store');
 
-// Public product page with referral attribution support.
 Route::get('/product/{slug}', [ProductShowController::class, 'show'])->name('product.show');
 
-// Paystack callback/webhook must be publicly reachable.
-Route::get('/checkout/paystack/callback', [CheckoutController::class, 'paystackCallback'])
-    ->name('checkout.paystack.callback');
-Route::post('/webhooks/paystack', [CheckoutController::class, 'paystackWebhook'])
-    ->name('webhooks.paystack');
+Route::get('/checkout/paystack/callback', [CheckoutController::class, 'paystackCallback'])->name('checkout.paystack.callback');
+Route::post('/webhooks/paystack', [CheckoutController::class, 'paystackWebhook'])->name('webhooks.paystack');
 
 Route::middleware('auth')->group(function () {
     Route::post('/checkout', [CheckoutController::class, 'create'])->name('checkout.create');
     Route::get('/checkout/{orderId}', [CheckoutController::class, 'show'])->name('checkout.show');
     Route::post('/checkout/{orderId}/paystack', [CheckoutController::class, 'paystack'])->name('checkout.paystack');
-
-    // Demo-only payment endpoint for local development.
     Route::post('/checkout/{orderId}/confirm-demo', [CheckoutController::class, 'confirm'])->name('checkout.confirm');
     Route::get('/order/{orderId}/success', [CheckoutController::class, 'success'])->name('order.success');
 });
