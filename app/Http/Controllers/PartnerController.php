@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\PartnershipProgram;
 use App\Models\User;
 use App\Models\ProgramPartner;
+use App\Services\PartnerApprovalService;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -27,7 +28,7 @@ class PartnerController extends Controller
         return view('partner.apply', compact('programs', 'recruiterCode', 'recruiterPartner', 'recruiterError'));
     }
 
-    public function store(Request $request)
+    public function store(Request $request, PartnerApprovalService $approvalService)
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -37,28 +38,59 @@ class PartnerController extends Controller
             'program_id' => ['required', 'exists:partnership_programs,id'],
             'recruiter_code' => ['nullable', 'string', 'exists:program_partners,partner_code'],
         ]);
+
+        $program = PartnershipProgram::findOrFail($validated['program_id']);
         $recruiterCode = $validated['recruiter_code'] ?? null;
+
         if ($recruiterCode) {
-            $recruiterPartner = ProgramPartner::where('partner_code', $recruiterCode)->where('program_id', $validated['program_id'])->where('status', 'active')->first();
-            if (!$recruiterPartner) return redirect()->back()->withInput()->withErrors(['recruiter_code' => 'Recruiter code does not exist for this program or is inactive.']);
+            $recruiterPartner = ProgramPartner::where('partner_code', $recruiterCode)
+                ->where('program_id', $validated['program_id'])
+                ->where('status', 'active')
+                ->first();
+            if (!$recruiterPartner) {
+                return redirect()->back()->withInput()->withErrors([
+                    'recruiter_code' => 'Recruiter code does not exist for this program or is inactive.',
+                ]);
+            }
         }
+
         $user = null;
-        DB::transaction(function () use ($validated, $recruiterCode, &$user) {
-            $user = User::create(['name' => $validated['name'], 'email' => $validated['email'], 'password' => Hash::make($validated['password'])]);
+        $partner = null;
+
+        DB::transaction(function () use ($validated, $recruiterCode, $program, &$user, &$partner, $approvalService) {
+            $user = User::create([
+                'name' => $validated['name'],
+                'email' => $validated['email'],
+                'password' => Hash::make($validated['password']),
+            ]);
+
+            $user->assignRole('partner');
+
             $parentPartnerId = null;
             if ($recruiterCode) {
-                $recruiterPartner = ProgramPartner::where('partner_code', $recruiterCode)->where('program_id', $validated['program_id'])->where('status', 'active')->first();
+                $recruiterPartner = ProgramPartner::where('partner_code', $recruiterCode)
+                    ->where('program_id', $validated['program_id'])
+                    ->where('status', 'active')
+                    ->first();
                 $parentPartnerId = $recruiterPartner?->id;
             }
-            ProgramPartner::create([
-                'program_id' => $validated['program_id'], 'user_id' => $user->id,
-                'partner_code' => 'PENDING-' . Str::upper(Str::random(8)), 'status' => 'pending',
-                'parent_partner_id' => $parentPartnerId, 'joined_at' => now(),
+
+            $partner = ProgramPartner::create([
+                'program_id' => $program->id,
+                'user_id' => $user->id,
+                'partner_code' => 'PENDING-' . Str::upper(Str::random(8)),
+                'status' => 'pending',
+                'parent_partner_id' => $parentPartnerId,
+                'joined_at' => now(),
             ]);
+
+            $approvalService->sync($partner);
         });
+
         event(new Registered($user));
         Auth::login($user);
         $request->session()->regenerate();
+
         return redirect()->route('partner.dashboard');
     }
 }
