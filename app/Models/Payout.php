@@ -29,15 +29,19 @@ class Payout extends Model
 
     public function partner()
     {
-        return $this->belongsTo(
-            ProgramPartner::class,
-            'partner_id'
-        );
+        return $this->belongsTo(ProgramPartner::class, 'partner_id');
     }
 
     public function program()
     {
         return $this->belongsTo(PartnershipProgram::class);
     }
-}
 
+    public function commissions()
+    {
+        return $this->belongsToMany(
+            Commission::class,
+            'payout_commissions'
+        )->withTimestamps();
+    }
+}
