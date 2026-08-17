@@ -11,8 +11,7 @@ class PayoutController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Payout::with(['partner.user', 'program'])
-            ->latest();
+        $query = Payout::with(['partner.user', 'program'])->latest();
 
         if ($request->filled('status')) {
             $query->where('status', $request->status);
@@ -21,7 +20,7 @@ class PayoutController extends Controller
         $payouts = $query->paginate(30)->withQueryString();
 
         $stats = [
-            'pending' => Payout::where('status', 'pending')->sum('amount'),
+            'requested' => Payout::where('status', 'requested')->sum('amount'),
             'approved' => Payout::where('status', 'approved')->sum('amount'),
             'paid' => Payout::where('status', 'paid')->sum('amount'),
             'rejected' => Payout::where('status', 'rejected')->sum('amount'),
@@ -33,36 +32,34 @@ class PayoutController extends Controller
     public function show(Payout $payout)
     {
         $payout->load(['partner.user', 'program', 'commissions.order']);
-
         return view('admin.payouts.show', compact('payout'));
     }
 
     public function approve(Payout $payout)
     {
-        if ($payout->status !== 'pending') {
-            return back()->with('error', 'Only pending payouts can be approved.');
+        if ($payout->status !== 'requested') {
+            return back()->with('error', 'Only requested payouts can be approved.');
         }
 
-        $payout->update([
-            'status' => 'approved',
-            'approved_at' => now(),
-        ]);
-
+        $payout->update(['status' => 'approved', 'approved_at' => now()]);
         return back()->with('success', 'Payout approved.');
     }
 
     public function reject(Request $request, Payout $payout)
     {
-        if (!in_array($payout->status, ['pending', 'approved'], true)) {
+        if (!in_array($payout->status, ['requested', 'approved'], true)) {
             return back()->with('error', 'This payout cannot be rejected.');
         }
 
-        $payout->update([
-            'status' => 'rejected',
-            'notes' => $request->input('notes') ?: $payout->notes,
-        ]);
+        DB::transaction(function () use ($request, $payout) {
+            $payout->commissions()->detach();
+            $payout->update([
+                'status' => 'rejected',
+                'notes' => $request->input('notes') ?: $payout->notes,
+            ]);
+        });
 
-        return back()->with('success', 'Payout rejected.');
+        return back()->with('success', 'Payout rejected. The commissions are available for another payout request.');
     }
 
     public function process(Payout $payout)
@@ -72,9 +69,7 @@ class PayoutController extends Controller
         }
 
         DB::transaction(function () use ($payout) {
-            $lockedPayout = Payout::with('commissions')
-                ->lockForUpdate()
-                ->findOrFail($payout->id);
+            $lockedPayout = Payout::with('commissions')->lockForUpdate()->findOrFail($payout->id);
 
             if ($lockedPayout->status !== 'approved') {
                 abort(422, 'Payout is no longer awaiting processing.');
