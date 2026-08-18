@@ -15,8 +15,10 @@ use Illuminate\View\View;
 
 class CustomerAuthController extends Controller
 {
-    public function createLogin(): View
+    public function createLogin(Request $request): View
     {
+        $this->storeIntendedUrl($request);
+
         return view('auth.customer-login');
     }
 
@@ -28,8 +30,10 @@ class CustomerAuthController extends Controller
         return redirect()->intended(route('dashboard', absolute: false));
     }
 
-    public function createRegister(): View
+    public function createRegister(Request $request): View
     {
+        $this->storeIntendedUrl($request);
+
         return view('auth.customer-register');
     }
 
@@ -54,5 +58,19 @@ class CustomerAuthController extends Controller
         $request->session()->regenerate();
 
         return redirect()->intended(route('dashboard', absolute: false));
+    }
+
+    private function storeIntendedUrl(Request $request): void
+    {
+        $continue = $request->query('continue');
+
+        if (!$continue) {
+            return;
+        }
+
+        $appUrl = rtrim(config('app.url'), '/');
+        if (str_starts_with($continue, $appUrl . '/') || str_starts_with($continue, '/')) {
+            $request->session()->put('url.intended', $continue);
+        }
     }
 }
