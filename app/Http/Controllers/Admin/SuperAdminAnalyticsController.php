@@ -9,16 +9,19 @@ use App\Models\Order;
 use App\Models\PartnershipProgram;
 use App\Models\ProgramPartner;
 use App\Models\User;
+use App\Services\AdminAnalyticsService;
 use Illuminate\Http\Request;
 
 class SuperAdminAnalyticsController extends Controller
 {
+    public function __construct(private readonly AdminAnalyticsService $analytics) {}
+
     public function businesses(Request $request)
     {
-        $businesses = User::role('program_manager')->latest()->get()->map(function ($business) {
+        $businesses = User::role('program_manager')->latest()->limit(100)->get()->map(function ($business) {
             $programIds = PartnershipProgram::where('owner_id', $business->id)->pluck('id');
             $partnerIds = ProgramPartner::whereIn('program_id', $programIds)->pluck('user_id')->unique();
-            $paid = Order::whereIn('program_id', $programIds)->where('status', 'paid');
+            $paid = Order::whereIn('program_id', $programIds)->whereIn('status', AdminAnalyticsService::PAID_STATUSES);
             $business->analytics = [
                 'programs' => $programIds->count(),
                 'partners' => $partnerIds->count(),
@@ -34,7 +37,6 @@ class SuperAdminAnalyticsController extends Controller
 
     public function business(Request $request, User $business)
     {
-        // In this application a signed-up business uses the program_manager role.
         abort_unless($business->hasRole('program_manager'), 404);
 
         $programs = PartnershipProgram::where('owner_id', $business->id)
@@ -45,51 +47,53 @@ class SuperAdminAnalyticsController extends Controller
 
         $partners = ProgramPartner::whereIn('program_id', $programIds)
             ->with(['user', 'parentPartner.user', 'program'])
-            ->withCount('children')
-            ->latest()->get();
+            ->withCount('children')->latest()->limit(100)->get();
 
-        $orders = Order::whereIn('program_id', $programIds)
-            ->with(['customer', 'partner.user', 'program', 'commissions'])
-            ->latest()->get();
-        $paidOrders = $orders->where('status', 'paid');
+        $ordersQuery = Order::whereIn('program_id', $programIds);
+        $paidOrdersQuery = (clone $ordersQuery)->whereIn('status', AdminAnalyticsService::PAID_STATUSES);
+        $orders = (clone $ordersQuery)->with(['customer', 'partner.user', 'program'])->latest()->limit(100)->get();
         $commissions = Commission::whereIn('program_id', $programIds)
+            ->whereNotIn('status', ['reversed', 'cancelled'])
             ->with(['partner.user', 'program', 'rule'])
-            ->latest()->get();
-        $payouts = BusinessPayout::where('business_id', $business->id)->latest()->get();
+            ->latest()->limit(100)->get();
+        $payouts = BusinessPayout::where('business_id', $business->id)->latest()->limit(100)->get();
 
-        $customerIds = $orders->pluck('customer_id')->filter()->unique();
-        $customerEmails = $orders->pluck('customer_email')->filter()->unique();
-        $customers = User::whereIn('id', $customerIds)->orWhereIn('email', $customerEmails)->latest()->get();
+        $customerIds = (clone $ordersQuery)->whereNotNull('customer_id')->distinct()->pluck('customer_id');
+        $customerEmails = (clone $ordersQuery)->whereNotNull('customer_email')->distinct()->pluck('customer_email');
+        $customers = User::whereIn('id', $customerIds)->orWhereIn('email', $customerEmails)->latest()->limit(100)->get();
 
-        $gross = (float) $paidOrders->sum('total');
-        $commissionTotal = (float) $commissions->whereIn('status', ['approved', 'payable', 'paid'])->sum('amount');
-        $refunded = (float) $orders->where('status', 'refunded')->sum('total');
-        $net = $gross - $commissionTotal;
+        $gross = (float) (clone $paidOrdersQuery)->sum('total');
+        $commissionTotal = (float) Commission::whereIn('program_id', $programIds)
+            ->whereIn('status', ['approved', 'payable', 'paid'])
+            ->sum('commission_amount');
+        $refunded = (float) (clone $ordersQuery)->where('status', 'refunded')->sum('total');
+        $paidOrderCount = (clone $paidOrdersQuery)->count();
+        $net = max(0, $gross - $commissionTotal);
 
         $stats = [
             'programs' => $programs->count(),
             'active_programs' => $programs->where('status', 'active')->count(),
-            'partners' => $partners->count(),
-            'active_partners' => $partners->where('status', 'active')->count(),
-            'recruited_partners' => $partners->whereNotNull('parent_partner_id')->count(),
+            'partners' => ProgramPartner::whereIn('program_id', $programIds)->count(),
+            'active_partners' => ProgramPartner::whereIn('program_id', $programIds)->where('status', 'active')->count(),
+            'recruited_partners' => ProgramPartner::whereIn('program_id', $programIds)->whereNotNull('parent_partner_id')->count(),
             'customers' => $customers->count(),
-            'orders' => $orders->count(),
-            'paid_orders' => $paidOrders->count(),
+            'orders' => (clone $ordersQuery)->count(),
+            'paid_orders' => $paidOrderCount,
             'gross_sales' => $gross,
             'commissions' => $commissionTotal,
             'net_revenue' => $net,
             'refunded' => $refunded,
-            'average_order' => $paidOrders->count() ? $gross / $paidOrders->count() : 0,
-            'payouts_requested' => (float) $payouts->sum('amount'),
-            'payouts_paid' => (float) $payouts->where('status', 'paid')->sum('amount'),
+            'average_order' => $paidOrderCount ? $gross / $paidOrderCount : 0,
+            'payouts_requested' => (float) BusinessPayout::where('business_id', $business->id)->sum('amount'),
+            'payouts_paid' => (float) BusinessPayout::where('business_id', $business->id)->where('status', 'paid')->sum('amount'),
         ];
 
-        $recentActivity = $orders->take(20)->map(fn ($order) => [
+        $recentActivity = (clone $ordersQuery)->with(['customer', 'partner.user', 'program'])->latest()->limit(20)->get()->map(fn ($order) => [
             'type' => 'sale', 'label' => 'Sale', 'description' => ($order->customer?->name ?? $order->customer_name ?? $order->customer_email ?? 'Customer') . ' purchased via ' . ($order->partner?->user?->name ?? 'direct'), 'date' => $order->created_at,
         ]);
 
         return view('admin.analytics.business', compact(
-            'business', 'programs', 'partners', 'orders', 'paidOrders', 'commissions', 'payouts', 'customers', 'stats', 'recentActivity'
+            'business', 'programs', 'partners', 'orders', 'commissions', 'payouts', 'customers', 'stats', 'recentActivity'
         ));
     }
 
@@ -99,8 +103,8 @@ class SuperAdminAnalyticsController extends Controller
         abort_unless($programPartner->program && $programPartner->program->owner_id === $business->id, 404);
 
         $programPartner->load(['user', 'program', 'parentPartner.user']);
-        $recruited = ProgramPartner::where('parent_partner_id', $programPartner->id)->with(['user', 'program'])->get();
-        $orders = Order::where('program_id', $programPartner->program_id)->where('partner_id', $programPartner->id)->where('status', 'paid')->with(['customer', 'program'])->latest()->get();
+        $recruited = ProgramPartner::where('parent_partner_id', $programPartner->id)->with(['user', 'program'])->limit(100)->get();
+        $orders = Order::where('program_id', $programPartner->program_id)->where('partner_id', $programPartner->id)->whereIn('status', AdminAnalyticsService::PAID_STATUSES)->with(['customer', 'program'])->latest()->limit(100)->get();
 
         return view('admin.analytics.partner', compact('business', 'programPartner', 'recruited', 'orders'));
     }

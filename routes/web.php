@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AnalyticsController;
+use App\Http\Controllers\Admin\RealtimeController;
 use App\Http\Controllers\Admin\SuperAdminAnalyticsController;
 use App\Http\Controllers\Admin\BusinessController as AdminBusinessController;
 use App\Http\Controllers\Admin\BusinessPayoutController as AdminBusinessPayoutController;
@@ -37,7 +38,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/partner/programs/{program}/join', [PartnerMarketplaceController::class, 'join'])->name('partner.marketplace.join');
     Route::get('/partner/payouts', [PayoutController::class, 'index'])->middleware('partner.approved')->name('partner.payouts.index');
     Route::post('/partner/payouts', [PayoutController::class, 'store'])->middleware('partner.approved')->name('partner.payouts.store');
+
+    // Business onboarding must remain reachable after email verification but before
+    // business approval, so the onboarding controller can show the pending state.
     Route::get('/business/pending', [BusinessOnboardingController::class, 'pending'])->name('business.pending');
+    Route::get('/business/onboarding/{step}', [BusinessOnboardingController::class, 'show'])->name('business.onboarding');
+    Route::post('/business/onboarding/{step}', [BusinessOnboardingController::class, 'store'])->name('business.onboarding.store');
+
     Route::middleware('business.approved')->group(function () {
         Route::get('/business/dashboard', [BusinessDashboardController::class, 'index'])->name('business.dashboard');
         Route::get('/business/payouts', [BusinessPayoutController::class, 'index'])->name('business.payouts.index');
@@ -56,8 +63,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/business/commissions', [BusinessPortalController::class, 'commissions'])->name('business.commissions.index');
         Route::patch('/business/programs/{program}/partners/{partner}/approve', [BusinessPartnerApprovalController::class, 'approve'])->name('business.affiliates.approve');
         Route::patch('/business/programs/{program}/partners/{partner}/reject', [BusinessPartnerApprovalController::class, 'reject'])->name('business.affiliates.reject');
-        Route::get('/business/onboarding/{step}', [BusinessOnboardingController::class, 'show'])->name('business.onboarding');
-        Route::post('/business/onboarding/{step}', [BusinessOnboardingController::class, 'store'])->name('business.onboarding.store');
     });
     Route::get('/network', [NetworkController::class, 'index'])->middleware('role:super_admin|program_manager|partner')->name('network.index');
 });
@@ -65,10 +70,12 @@ Route::middleware(['auth', 'role:customer'])->group(function () { Route::get('/c
 Route::get('/business/start', [BusinessOnboardingController::class, 'start'])->name('business.start');
 Route::middleware(['auth', 'role:super_admin'])->prefix('admin')->group(function () {
     Route::get('/', [AdminDashboardController::class, 'index'])->name('admin');
+    Route::get('/realtime/sales', [RealtimeController::class, 'sales'])->name('admin.realtime.sales');
     Route::get('/analytics/businesses', [SuperAdminAnalyticsController::class, 'businesses'])->name('admin.analytics.businesses');
     Route::get('/analytics/businesses/{business}', [SuperAdminAnalyticsController::class, 'business'])->name('admin.analytics.business');
     Route::get('/analytics/businesses/{business}/partners/{programPartner}', [SuperAdminAnalyticsController::class, 'partner'])->name('admin.analytics.partner');
     Route::get('/analytics/{metric}', [AnalyticsController::class, 'show'])->name('admin.analytics.show');
+    Route::get('/analytics/{metric}/export', [AnalyticsController::class, 'export'])->name('admin.analytics.export');
     Route::get('/settings', [AdminSettingsController::class, 'edit'])->name('admin.settings'); Route::put('/settings', [AdminSettingsController::class, 'update'])->name('admin.settings.update');
     Route::get('/businesses', [AdminBusinessController::class, 'index'])->name('admin.businesses.index'); Route::patch('/businesses/{business}/approve', [AdminBusinessController::class, 'approve'])->name('admin.businesses.approve'); Route::patch('/businesses/{business}/reject', [AdminBusinessController::class, 'reject'])->name('admin.businesses.reject');
     Route::get('/partners', [AdminPartnerController::class, 'index'])->name('admin.partners.index'); Route::patch('/partners/{partner}/approve', [AdminPartnerController::class, 'approve'])->name('admin.partners.approve'); Route::patch('/partners/{partner}/reject', [AdminPartnerController::class, 'reject'])->name('admin.partners.reject');
