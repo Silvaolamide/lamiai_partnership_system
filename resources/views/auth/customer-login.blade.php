@@ -44,7 +44,7 @@
     </form>
 
     <div class="my-7 flex items-center gap-4"><div class="h-px flex-1 bg-gray-100"></div><span class="text-xs font-medium text-gray-400">NEW CUSTOMER?</span><div class="h-px flex-1 bg-gray-100"></div></div>
-    <a href="{{ route('customer.register') }}" class="flex w-full items-center justify-center rounded-xl border border-gray-200 px-5 py-3.5 text-sm font-bold text-gray-700 transition hover:border-violet-200 hover:bg-violet-50 hover:text-violet-700">Create a customer account</a>
+    <a href="{{ route('customer.register', ['continue' => session('url.intended')]) }}" class="flex w-full items-center justify-center rounded-xl border border-gray-200 px-5 py-3.5 text-sm font-bold text-gray-700 transition hover:border-violet-200 hover:bg-violet-50 hover:text-violet-700">Create a customer account</a>
 
     <p class="mt-6 text-center text-xs text-gray-400">Business account? <a href="{{ route('login') }}" class="font-semibold text-violet-700">Business login</a>.</p>
 </x-guest-layout>
