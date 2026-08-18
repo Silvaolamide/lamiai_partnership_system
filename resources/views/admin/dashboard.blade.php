@@ -41,6 +41,19 @@
                 <a href="{{ route('network.index') }}" class="inline-flex w-fit rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-black text-white hover:bg-violet-700">Open network tree →</a>
             </div>
 
+            {{-- Management shortcuts moved here so Super Admin has immediate access after the recruitment network. --}}
+            <div class="grid grid-cols-2 md:grid-cols-9 gap-3">
+                <a class="bg-white rounded-xl border p-4 hover:bg-gray-50" href="{{ route('admin.partners.index') }}"><b>Partners</b><span class="block text-xs text-gray-500 mt-1">Approve & manage</span></a>
+                <a class="bg-white rounded-xl border p-4 hover:bg-gray-50" href="{{ route('network.index') }}"><b>Network</b><span class="block text-xs text-gray-500 mt-1">Recruitment tree</span></a>
+                <a class="bg-white rounded-xl border p-4 hover:bg-gray-50" href="{{ route('admin.businesses.index') }}"><b>Businesses</b><span class="block text-xs text-gray-500 mt-1">Approve businesses</span></a>
+                <a class="bg-white rounded-xl border p-4 hover:bg-gray-50" href="{{ route('admin.programs.index') }}"><b>Programs</b><span class="block text-xs text-gray-500 mt-1">Configure programs</span></a>
+                <a class="bg-white rounded-xl border p-4 hover:bg-gray-50" href="{{ route('admin.products.index') }}"><b>Products</b><span class="block text-xs text-gray-500 mt-1">Manage catalog</span></a>
+                <a class="bg-white rounded-xl border p-4 hover:bg-gray-50" href="{{ route('admin.orders.index') }}"><b>Orders</b><span class="block text-xs text-gray-500 mt-1">Customer sales</span></a>
+                <a class="bg-white rounded-xl border p-4 hover:bg-gray-50" href="{{ route('admin.commissions.index') }}"><b>Commissions</b><span class="block text-xs text-gray-500 mt-1">Review earnings</span></a>
+                <a class="bg-white rounded-xl border p-4 hover:bg-gray-50" href="{{ route('admin.payouts.index') }}"><b>Partner Payouts</b><span class="block text-xs text-gray-500 mt-1">Process commissions</span></a>
+                <a class="bg-white rounded-xl border p-4 hover:bg-gray-50" href="{{ route('admin.business-payouts.index') }}"><b>Business Payouts</b><span class="block text-xs text-gray-500 mt-1">Pay businesses</span></a>
+            </div>
+
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100">
                     <div class="p-5 border-b flex items-center justify-between"><div><h3 class="font-semibold text-gray-900">Recent Orders</h3><p class="text-sm text-gray-500">Latest customer transactions</p></div><a href="{{ route('admin.orders.index') }}" class="text-sm font-medium text-indigo-600">View all</a></div>
@@ -83,19 +96,6 @@
                     @endforeach
                 </div>
             </section>
-
-            {{-- Management buttons intentionally remain at the very bottom, after analytics. --}}
-            <div class="grid grid-cols-2 md:grid-cols-9 gap-3">
-                <a class="bg-white rounded-xl border p-4 hover:bg-gray-50" href="{{ route('admin.partners.index') }}"><b>Partners</b><span class="block text-xs text-gray-500 mt-1">Approve & manage</span></a>
-                <a class="bg-white rounded-xl border p-4 hover:bg-gray-50" href="{{ route('network.index') }}"><b>Network</b><span class="block text-xs text-gray-500 mt-1">Recruitment tree</span></a>
-                <a class="bg-white rounded-xl border p-4 hover:bg-gray-50" href="{{ route('admin.businesses.index') }}"><b>Businesses</b><span class="block text-xs text-gray-500 mt-1">Approve businesses</span></a>
-                <a class="bg-white rounded-xl border p-4 hover:bg-gray-50" href="{{ route('admin.programs.index') }}"><b>Programs</b><span class="block text-xs text-gray-500 mt-1">Configure programs</span></a>
-                <a class="bg-white rounded-xl border p-4 hover:bg-gray-50" href="{{ route('admin.products.index') }}"><b>Products</b><span class="block text-xs text-gray-500 mt-1">Manage catalog</span></a>
-                <a class="bg-white rounded-xl border p-4 hover:bg-gray-50" href="{{ route('admin.orders.index') }}"><b>Orders</b><span class="block text-xs text-gray-500 mt-1">Customer sales</span></a>
-                <a class="bg-white rounded-xl border p-4 hover:bg-gray-50" href="{{ route('admin.commissions.index') }}"><b>Commissions</b><span class="block text-xs text-gray-500 mt-1">Review earnings</span></a>
-                <a class="bg-white rounded-xl border p-4 hover:bg-gray-50" href="{{ route('admin.payouts.index') }}"><b>Partner Payouts</b><span class="block text-xs text-gray-500 mt-1">Process commissions</span></a>
-                <a class="bg-white rounded-xl border p-4 hover:bg-gray-50" href="{{ route('admin.business-payouts.index') }}"><b>Business Payouts</b><span class="block text-xs text-gray-500 mt-1">Pay businesses</span></a>
-            </div>
         </div>
     </div>
 </x-app-layout>
