@@ -11,18 +11,13 @@
     </head>
     <body class="font-sans antialiased text-slate-900">
         @php($isAdmin = Auth::check() && Auth::user()->hasRole('super_admin'))
-        <div class="min-h-screen {{ $isAdmin ? 'bg-[#f6f7fb]' : 'bg-gray-100' }}">
+        <div x-data="{ adminSidebarCollapsed: false, mobileNavOpen: false }" class="min-h-screen {{ $isAdmin ? 'bg-[#f6f7fb]' : 'bg-gray-100' }}">
             @include('layouts.navigation')
 
             @if($isAdmin)
-                <main class="min-h-screen pt-[78px] transition-all duration-300 lg:ml-[264px]" x-data x-bind:class="$root.__x ? '' : ''">
+                <main class="min-h-screen pt-[78px] transition-all duration-300 lg:ml-[264px]" :class="adminSidebarCollapsed ? 'lg:ml-[82px]' : 'lg:ml-[264px]'">
                     {{ $slot }}
                 </main>
-                <script>
-                    document.addEventListener('alpine:init', () => {
-                        const original = Alpine.data;
-                    });
-                </script>
             @else
                 @isset($header)
                     <header class="bg-white shadow">
