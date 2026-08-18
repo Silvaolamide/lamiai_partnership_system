@@ -1,17 +1,6 @@
-@extends('layouts.admin')
-
-@section('content')
-<div class="container-fluid py-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div><h1 class="h3 mb-1">All Businesses</h1><p class="text-muted mb-0">Fast access to every business, its programs, partners and performance.</p></div>
-    </div>
-    <div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover align-middle mb-0">
-        <thead><tr><th>Business</th><th>Programs</th><th>Partners</th><th>Orders</th><th>Gross Sales</th><th>Actions</th></tr></thead>
-        <tbody>
-        @forelse($businesses as $business)
-            <tr><td><strong>{{ $business->name }}</strong><br><small class="text-muted">{{ $business->email }}</small></td><td>{{ $business->analytics['programs'] }}</td><td>{{ $business->analytics['partners'] }}</td><td>{{ $business->analytics['orders'] }}</td><td>₦{{ number_format($business->analytics['sales'], 2) }}</td><td><a class="btn btn-sm btn-primary" href="{{ route('admin.analytics.business', $business) }}">View business</a></td></tr>
-        @empty <tr><td colspan="6" class="text-center py-4">No businesses found.</td></tr>@endforelse
-        </tbody>
-    </table></div></div>
-</div>
-@endsection
+<x-app-layout>
+<x-slot name="header"><div><p class="text-xs font-black uppercase tracking-widest text-violet-600">Business intelligence</p><h2 class="font-black text-2xl text-gray-900">All Businesses</h2><p class="text-sm text-gray-500 mt-1">Start here when you need to understand a business, then drill into its partners, network, customers and money.</p></div></x-slot>
+<div class="py-6 bg-slate-50 min-h-screen"><div class="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">@include('admin.partials.command-nav')
+<div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5"><div class="rounded-2xl bg-white border p-5"><span class="text-xs text-slate-400">Businesses</span><b class="block text-2xl mt-2">{{$businesses->count()}}</b></div><div class="rounded-2xl bg-white border p-5"><span class="text-xs text-slate-400">Fast path</span><b class="block text-sm mt-3 text-violet-700">Business → Partners</b></div><div class="rounded-2xl bg-white border p-5"><span class="text-xs text-slate-400">Then</span><b class="block text-sm mt-3 text-violet-700">Partner → Recruits</b></div><div class="rounded-2xl bg-white border p-5"><span class="text-xs text-slate-400">Finally</span><b class="block text-sm mt-3 text-violet-700">Sales → Money trail</b></div></div>
+<div class="rounded-2xl border bg-white shadow-sm overflow-hidden"><div class="p-5 border-b"><h3 class="font-black">Business portfolio map</h3><p class="text-sm text-slate-500">Click any business to open its complete operating picture.</p></div><div class="overflow-x-auto"><table class="min-w-full text-sm"><thead class="bg-slate-50 text-slate-500"><tr><th class="p-4 text-left">Business</th><th class="p-4">Programs</th><th class="p-4">Partners</th><th class="p-4">Orders</th><th class="p-4 text-right">Gross sales</th><th></th></tr></thead><tbody class="divide-y">@forelse($businesses as $business)<tr class="hover:bg-violet-50/40"><td class="p-4"><b class="font-black">{{$business->business_name ?: $business->name}}</b><small class="block text-xs text-slate-400">{{$business->email}}</small></td><td class="p-4 text-center">{{$business->analytics['programs']}}</td><td class="p-4 text-center">{{$business->analytics['partners']}}</td><td class="p-4 text-center">{{$business->analytics['orders']}}</td><td class="p-4 text-right font-black">₦{{number_format($business->analytics['sales'],2)}}</td><td class="p-4"><a class="rounded-xl bg-violet-600 text-white px-3 py-2 text-xs font-black" href="{{route('admin.analytics.business',$business)}}">Open portfolio →</a></td></tr>@empty<tr><td colspan="6" class="p-10 text-center text-slate-400">No businesses found.</td></tr>@endforelse</tbody></table></div></div>
+</div></div></x-app-layout>
