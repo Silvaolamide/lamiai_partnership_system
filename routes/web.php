@@ -38,7 +38,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/partner/programs/{program}/join', [PartnerMarketplaceController::class, 'join'])->name('partner.marketplace.join');
     Route::get('/partner/payouts', [PayoutController::class, 'index'])->middleware('partner.approved')->name('partner.payouts.index');
     Route::post('/partner/payouts', [PayoutController::class, 'store'])->middleware('partner.approved')->name('partner.payouts.store');
+
+    // Business onboarding must remain reachable after email verification but before
+    // business approval, so the onboarding controller can show the pending state.
     Route::get('/business/pending', [BusinessOnboardingController::class, 'pending'])->name('business.pending');
+    Route::get('/business/onboarding/{step}', [BusinessOnboardingController::class, 'show'])->name('business.onboarding');
+    Route::post('/business/onboarding/{step}', [BusinessOnboardingController::class, 'store'])->name('business.onboarding.store');
+
     Route::middleware('business.approved')->group(function () {
         Route::get('/business/dashboard', [BusinessDashboardController::class, 'index'])->name('business.dashboard');
         Route::get('/business/payouts', [BusinessPayoutController::class, 'index'])->name('business.payouts.index');
@@ -57,8 +63,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/business/commissions', [BusinessPortalController::class, 'commissions'])->name('business.commissions.index');
         Route::patch('/business/programs/{program}/partners/{partner}/approve', [BusinessPartnerApprovalController::class, 'approve'])->name('business.affiliates.approve');
         Route::patch('/business/programs/{program}/partners/{partner}/reject', [BusinessPartnerApprovalController::class, 'reject'])->name('business.affiliates.reject');
-        Route::get('/business/onboarding/{step}', [BusinessOnboardingController::class, 'show'])->name('business.onboarding');
-        Route::post('/business/onboarding/{step}', [BusinessOnboardingController::class, 'store'])->name('business.onboarding.store');
     });
     Route::get('/network', [NetworkController::class, 'index'])->middleware('role:super_admin|program_manager|partner')->name('network.index');
 });
