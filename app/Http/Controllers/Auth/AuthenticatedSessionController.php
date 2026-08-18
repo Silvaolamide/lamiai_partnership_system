@@ -14,9 +14,11 @@ class AuthenticatedSessionController extends Controller
     /**
      * Display the login view.
      */
-    public function create(): View
+    public function create(Request $request): View
     {
-        return view('auth.login');
+        return view('auth.login', [
+            'context' => $request->query('context', 'general'),
+        ]);
     }
 
     /**
@@ -27,6 +29,10 @@ class AuthenticatedSessionController extends Controller
         $request->authenticate();
 
         $request->session()->regenerate();
+
+        if ($request->session()->has('pending_checkout_product_id')) {
+            return redirect()->route('checkout.start');
+        }
 
         return redirect()->intended(route('dashboard', absolute: false));
     }
