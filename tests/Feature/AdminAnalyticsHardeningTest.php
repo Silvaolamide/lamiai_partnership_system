@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Commission;
+use App\Models\CommissionRule;
 use App\Models\Order;
 use App\Models\PartnershipProgram;
 use App\Models\ProgramPartner;
@@ -52,6 +53,23 @@ test('admin analytics uses commission_amount and filters by business and program
     $partnerA = analyticsPartner($programA, 'ANALYTICS-A');
     $partnerB = analyticsPartner($programB, 'ANALYTICS-B');
 
+    $ruleA = CommissionRule::create([
+        'program_id' => $programA->id,
+        'event' => 'sale',
+        'level' => 1,
+        'commission_type' => 'percentage',
+        'value' => 10,
+        'status' => true,
+    ]);
+    $ruleB = CommissionRule::create([
+        'program_id' => $programB->id,
+        'event' => 'sale',
+        'level' => 1,
+        'commission_type' => 'percentage',
+        'value' => 10,
+        'status' => true,
+    ]);
+
     $orderA = Order::create([
         'order_number' => 'A-'.uniqid(), 'program_id' => $programA->id, 'subtotal' => 10000, 'discount' => 0, 'total' => 10000,
         'currency' => 'NGN', 'status' => 'paid', 'payment_provider' => 'test', 'payment_reference' => uniqid(), 'paid_at' => now(),
@@ -62,11 +80,11 @@ test('admin analytics uses commission_amount and filters by business and program
     ]);
 
     Commission::create([
-        'program_id' => $programA->id, 'partner_id' => $partnerA->id, 'order_id' => $orderA->id, 'level' => 1,
+        'program_id' => $programA->id, 'partner_id' => $partnerA->id, 'order_id' => $orderA->id, 'rule_id' => $ruleA->id, 'level' => 1,
         'commission_type' => 'percentage', 'rate' => 10, 'base_amount' => 10000, 'commission_amount' => 1000, 'status' => 'approved',
     ]);
     Commission::create([
-        'program_id' => $programB->id, 'partner_id' => $partnerB->id, 'order_id' => $orderB->id, 'level' => 1,
+        'program_id' => $programB->id, 'partner_id' => $partnerB->id, 'order_id' => $orderB->id, 'rule_id' => $ruleB->id, 'level' => 1,
         'commission_type' => 'percentage', 'rate' => 10, 'base_amount' => 20000, 'commission_amount' => 2000, 'status' => 'approved',
     ]);
 
