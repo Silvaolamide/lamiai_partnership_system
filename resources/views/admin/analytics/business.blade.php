@@ -1,0 +1,11 @@
+@extends('layouts.admin')
+
+@section('content')
+<div class="container-fluid py-4">
+<a href="{{ route('admin.analytics.businesses') }}" class="btn btn-sm btn-outline-secondary mb-3">← All Businesses</a>
+<h1 class="h3">{{ $business->name }}</h1><p class="text-muted">{{ $business->email }}</p>
+<div class="row g-3 mb-4">@foreach([['Programs',$stats['programs']],['Partners',$stats['partners']],['Paid Orders',$stats['orders']],['Gross Sales','₦'.number_format($stats['gross_sales'],2)],['Net Revenue','₦'.number_format($stats['net_revenue'],2)]] as $stat)<div class="col-md"><div class="card shadow-sm"><div class="card-body"><small class="text-muted">{{ $stat[0] }}</small><div class="h4 mb-0">{{ $stat[1] }}</div></div></div></div>@endforeach</div>
+<div class="card shadow-sm mb-4"><div class="card-header"><strong>Partners under this business</strong></div><div class="table-responsive"><table class="table table-hover mb-0"><thead><tr><th>Partner</th><th>Program</th><th>Recruited by</th><th>Status</th><th></th></tr></thead><tbody>@forelse($programPartners as $pp)<tr><td>{{ $pp->user->name }}<br><small>{{ $pp->user->email }}</small></td><td>{{ $pp->program->name }}</td><td>{{ optional(optional($pp->parentPartner)->user)->name ?? 'Direct' }}</td><td>{{ ucfirst($pp->status ?? 'active') }}</td><td><a class="btn btn-sm btn-outline-primary" href="{{ route('admin.analytics.partner', [$business, $pp]) }}">Details</a></td></tr>@empty<tr><td colspan="5" class="text-center py-3">No partners.</td></tr>@endforelse</tbody></table></div></div>
+<div class="card shadow-sm"><div class="card-header"><strong>Recent sales</strong></div><div class="table-responsive"><table class="table mb-0"><thead><tr><th>Order</th><th>Customer</th><th>Partner</th><th>Program</th><th>Total</th><th>Date</th></tr></thead><tbody>@forelse($orders->take(50) as $order)<tr><td>{{ $order->order_number }}</td><td>{{ optional($order->customer)->name ?? $order->customer_email }}</td><td>{{ optional($order->partner)->name ?? '—' }}</td><td>{{ $order->program->name ?? '—' }}</td><td>₦{{ number_format($order->total,2) }}</td><td>{{ $order->created_at->format('d M Y H:i') }}</td></tr>@empty<tr><td colspan="6" class="text-center py-3">No paid sales.</td></tr>@endforelse</tbody></table></div></div>
+</div>
+@endsection
