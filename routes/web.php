@@ -12,6 +12,9 @@ use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\Admin\OrderController;
 use App\Http\Controllers\Admin\CommissionController;
 
+Route::get('/checkout/start', [CheckoutController::class, 'start'])
+    ->name('checkout.start');
+
 Route::middleware(['auth'])->group(function () {
     Route::get('/partner/dashboard', [PartnerDashboardController::class, 'index'])
         ->name('partner.dashboard');
