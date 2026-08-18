@@ -70,6 +70,8 @@ class CheckoutController extends Controller
             $order = Order::create([
                 'order_number' => $this->generateOrderNumber(),
                 'customer_id' => Auth::id(),
+                'customer_name' => Auth::user()?->name,
+                'customer_email' => Auth::user()?->email,
                 'program_id' => $program?->id,
                 'partner_id' => $partnerId,
                 'subtotal' => $product->price,
@@ -90,17 +92,21 @@ class CheckoutController extends Controller
             return $order;
         });
 
+        $request->session()->put('checkout_order_id', $order->id);
+
         return redirect()->route('checkout.show', ['orderId' => $order->id]);
     }
 
-    public function show($orderId)
+    public function show(Request $request, $orderId)
     {
         $order = Order::with(['items', 'items.product', 'partner.user', 'program'])
             ->findOrFail($orderId);
 
-        // Use the registered OrderPolicy, but explicitly abort here so an
-        // unauthorized customer receives the expected HTTP 403 response.
-        if (!Auth::user()->can('view', $order)) {
+        if (Auth::check()) {
+            if ($order->customer_id !== Auth::id()) {
+                abort(403);
+            }
+        } elseif ((int) $request->session()->get('checkout_order_id') !== (int) $order->id) {
             abort(403);
         }
 
@@ -108,23 +114,40 @@ class CheckoutController extends Controller
     }
 
     /**
-     * Initialize a real Paystack transaction and redirect the customer to Paystack.
+     * Initialize a real Paystack transaction. Guests provide their contact
+     * details here; authentication is intentionally deferred until payment
+     * has succeeded.
      */
     public function paystack(Request $request, $orderId)
     {
         $order = Order::with('customer')->findOrFail($orderId);
 
-        if ($order->customer_id !== Auth::id()) {
+        if (Auth::check()) {
+            if ($order->customer_id !== Auth::id()) {
+                abort(403, 'Unauthorized');
+            }
+        } elseif ((int) $request->session()->get('checkout_order_id') !== (int) $order->id) {
             abort(403, 'Unauthorized');
         }
 
         if ($order->status !== 'pending') {
-            return redirect()->route('checkout.show', ['orderId' => $order->id])
-                ->with('error', 'This order has already been processed.');
+            return redirect()->route('order.post-payment', ['orderId' => $order->id]);
         }
 
+        $validated = $request->validate([
+            'customer_name' => ['required', 'string', 'max:255'],
+            'customer_email' => ['required', 'email', 'max:255'],
+            'customer_phone' => ['nullable', 'string', 'max:30'],
+        ]);
+
+        $order->update([
+            'customer_name' => $validated['customer_name'],
+            'customer_email' => $validated['customer_email'],
+            'customer_phone' => $validated['customer_phone'] ?? null,
+        ]);
+
         try {
-            $transaction = $this->paystackService->initialize($order, $order->customer->email);
+            $transaction = $this->paystackService->initialize($order, $validated['customer_email']);
 
             return redirect()->away($transaction['authorization_url']);
         } catch (\Throwable $e) {
@@ -138,17 +161,12 @@ class CheckoutController extends Controller
         }
     }
 
-    /**
-     * Paystack browser callback. The transaction is verified server-side before
-     * the order is marked paid.
-     */
     public function paystackCallback(Request $request)
     {
         $reference = $request->query('reference');
 
         if (!$reference) {
-            return redirect()->route('dashboard')
-                ->with('error', 'Payment reference was not supplied.');
+            return redirect()->route('home')->with('error', 'Payment reference was not supplied.');
         }
 
         try {
@@ -156,28 +174,23 @@ class CheckoutController extends Controller
             $order = Order::where('payment_reference', $reference)->first();
 
             if (!$order) {
-                return redirect()->route('dashboard')
-                    ->with('error', 'We could not find the order for this payment.');
+                return redirect()->route('home')->with('error', 'We could not find the order for this payment.');
             }
 
             $this->completePaystackOrder($order, $data);
 
-            return redirect()->route('order.success', ['orderId' => $order->id])
-                ->with('success', 'Payment confirmed! Your order has been processed.');
+            return $this->postPaymentRedirect($request, $order);
         } catch (\Throwable $e) {
             Log::error('Paystack callback verification failed', [
                 'reference' => $reference,
                 'exception' => $e,
             ]);
 
-            return redirect()->route('dashboard')
+            return redirect()->route('home')
                 ->with('error', 'Payment verification failed. Please contact support if your account was charged.');
         }
     }
 
-    /**
-     * Paystack webhook endpoint. Signature is validated before the event is used.
-     */
     public function paystackWebhook(Request $request)
     {
         $payload = $request->getContent();
@@ -221,25 +234,33 @@ class CheckoutController extends Controller
         return response()->json(['message' => 'Event processed']);
     }
 
-    /**
-     * Demo-only payment endpoint retained for local testing.
-     */
     public function confirm(Request $request, $orderId)
     {
-        $request->validate(['payment_method' => ['required', 'in:demo']]);
-
         $order = Order::findOrFail($orderId);
 
-        if ($order->customer_id !== Auth::id()) {
+        if (Auth::check()) {
+            if ($order->customer_id !== Auth::id()) {
+                abort(403, 'Unauthorized');
+            }
+        } elseif ((int) $request->session()->get('checkout_order_id') !== (int) $order->id) {
             abort(403, 'Unauthorized');
         }
 
+        $request->validate([
+            'payment_method' => ['required', 'in:demo'],
+            'customer_name' => ['required', 'string', 'max:255'],
+            'customer_email' => ['required', 'email', 'max:255'],
+            'customer_phone' => ['nullable', 'string', 'max:30'],
+        ]);
+
         if ($order->status !== 'pending') {
-            return redirect()->route('checkout.show', ['orderId' => $order->id])
-                ->with('error', 'This order has already been processed.');
+            return redirect()->route('order.post-payment', ['orderId' => $order->id]);
         }
 
         $order->update([
+            'customer_name' => $request->customer_name,
+            'customer_email' => $request->customer_email,
+            'customer_phone' => $request->customer_phone,
             'status' => 'paid',
             'paid_at' => now(),
             'payment_reference' => $this->generatePaymentReference(),
@@ -256,26 +277,43 @@ class CheckoutController extends Controller
                 'exception' => $e,
             ]);
 
-            return redirect()->route('order.success', ['orderId' => $order->id])
+            return redirect()->route('order.post-payment', ['orderId' => $order->id])
                 ->with('warning', 'Payment was recorded, but commission processing needs administrator attention.');
         }
 
         $this->referralService->clearReferral();
 
-        return redirect()->route('order.success', ['orderId' => $order->id])
-            ->with('success', 'Demo payment confirmed!');
+        return $this->postPaymentRedirect($request, $order);
     }
 
-    public function success($orderId)
+    public function postPayment($orderId)
     {
-        $order = Order::with(['items', 'items.product', 'partner.user', 'program', 'commissions'])
-            ->findOrFail($orderId);
+        $order = Order::with(['items.product', 'commissions'])->findOrFail($orderId);
 
-        if (!Auth::user()->can('view', $order)) {
-            abort(403);
+        if ($order->status !== 'paid') {
+            return redirect()->route('checkout.show', ['orderId' => $order->id]);
         }
 
-        return view('orders.success', compact('order'));
+        if (Auth::check() && $order->customer_id === Auth::id()) {
+            return redirect()->route('customer.dashboard');
+        }
+
+        session()->put('pending_customer_order_id', $order->id);
+
+        return redirect()->route('customer.login', ['order' => $order->id])
+            ->with('status', 'Payment successful. Sign in or create your customer account to access your purchase.');
+    }
+
+    private function postPaymentRedirect(Request $request, Order $order)
+    {
+        if (Auth::check() && $order->customer_id === Auth::id()) {
+            return redirect()->route('customer.dashboard');
+        }
+
+        $request->session()->put('pending_customer_order_id', $order->id);
+
+        return redirect()->route('customer.login', ['order' => $order->id])
+            ->with('status', 'Payment successful. Sign in or create your customer account to access your purchase.');
     }
 
     private function completePaystackOrder(Order $order, array $data): void
