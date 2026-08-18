@@ -18,7 +18,7 @@
         @csrf
         <div>
             <x-input-label for="email" value="Email address" class="mb-2 font-semibold text-gray-700" />
-            <x-text-input id="email" class="lami-input block w-full rounded-xl border-gray-200 bg-gray-50 px-4 py-3.5 text-sm" type="email" name="email" :value="old('email')" required autofocus autocomplete="username" placeholder="you@company.com" />
+            <x-text-input id="email" class="brand-input block w-full rounded-xl border-gray-200 bg-gray-50 px-4 py-3.5 text-sm" type="email" name="email" :value="old('email')" required autofocus autocomplete="username" placeholder="you@company.com" />
             <x-input-error :messages="$errors->get('email')" class="mt-2" />
         </div>
 
@@ -29,7 +29,7 @@
                     <a href="{{ route('password.request') }}" class="text-xs font-bold text-violet-700 hover:text-violet-900">Forgot password?</a>
                 @endif
             </div>
-            <x-text-input id="password" class="lami-input block w-full rounded-xl border-gray-200 bg-gray-50 px-4 py-3.5 text-sm" type="password" name="password" required autocomplete="current-password" placeholder="Enter your password" />
+            <x-text-input id="password" class="brand-input block w-full rounded-xl border-gray-200 bg-gray-50 px-4 py-3.5 text-sm" type="password" name="password" required autocomplete="current-password" placeholder="Enter your password" />
             <x-input-error :messages="$errors->get('password')" class="mt-2" />
         </div>
 
@@ -38,11 +38,11 @@
             <span>Keep me signed in</span>
         </label>
 
-        <button type="submit" class="lami-btn flex w-full items-center justify-center rounded-xl px-5 py-3.5 text-sm font-bold text-white shadow-lg shadow-violet-700/15">
-            Sign in to LAMI AI <span class="ml-2 text-lg">→</span>
+        <button type="submit" class="brand-btn flex w-full items-center justify-center rounded-xl px-5 py-3.5 text-sm font-bold text-white shadow-lg shadow-violet-700/15">
+            Sign in to AIPM <span class="ml-2 text-lg">→</span>
         </button>
     </form>
 
-    <div class="my-7 flex items-center gap-4"><div class="h-px flex-1 bg-gray-100"></div><span class="text-xs font-medium text-gray-400">NEW TO LAMI AI?</span><div class="h-px flex-1 bg-gray-100"></div></div>
+    <div class="my-7 flex items-center gap-4"><div class="h-px flex-1 bg-gray-100"></div><span class="text-xs font-medium text-gray-400">NEW TO AIPM?</span><div class="h-px flex-1 bg-gray-100"></div></div>
     <a href="{{ route('register') }}" class="flex w-full items-center justify-center rounded-xl border border-gray-200 px-5 py-3.5 text-sm font-bold text-gray-700 transition hover:border-violet-200 hover:bg-violet-50 hover:text-violet-700">Create a business account</a>
 </x-guest-layout>
