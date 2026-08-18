@@ -29,18 +29,38 @@ class PartnerDashboardController extends Controller
 
         $programStats = $partners->map(function ($partner) {
             $stats = $this->commissionService->getCommissionStats($partner);
-            $orders = $partner->orders();
-            $paidOrders = (clone $orders)->where('status', 'paid')->get();
+            $orders = $partner->orders()->with(['customer', 'items.product', 'commissions.partner.user', 'commissions.rule'])->latest()->get();
+            $paidOrders = $orders->whereIn('status', ['paid', 'completed', 'processing', 'fulfilled']);
 
             $directCommission = $partner->commissions()
                 ->where('level', 1)
-                ->whereIn('status', ['available', 'paid', 'pending'])
+                ->whereNotIn('status', ['reversed', 'cancelled'])
                 ->sum('commission_amount');
 
             $recruiterCommission = $partner->commissions()
                 ->where('level', '>', 1)
-                ->whereIn('status', ['available', 'paid', 'pending'])
+                ->whereNotIn('status', ['reversed', 'cancelled'])
                 ->sum('commission_amount');
+
+            $saleBreakdown = $paidOrders->map(function ($order) use ($partner) {
+                $commissions = $order->commissions->whereNotIn('status', ['reversed', 'cancelled'])->values();
+                $partnerEarnings = (float) $commissions->where('partner_id', $partner->id)->sum('commission_amount');
+                $otherCommissions = (float) $commissions->where('partner_id', '!=', $partner->id)->sum('commission_amount');
+                $businessNet = max(0, (float) $order->total - (float) $commissions->sum('commission_amount'));
+
+                return [
+                    'order' => $order,
+                    'commissions' => $commissions,
+                    'sale_value' => (float) $order->total,
+                    'partner_earnings' => $partnerEarnings,
+                    'other_commissions' => $otherCommissions,
+                    'business_net' => $businessNet,
+                    'total_commissions' => (float) $commissions->sum('commission_amount'),
+                ];
+            });
+
+            $grossSales = (float) $paidOrders->sum('total');
+            $totalCommissions = (float) $saleBreakdown->sum('total_commissions');
 
             return [
                 'partner' => $partner,
@@ -49,9 +69,13 @@ class PartnerDashboardController extends Controller
                 'recruited_partners_count' => $partner->childPartners()->count(),
                 'total_orders' => $orders->count(),
                 'paid_orders' => $paidOrders->count(),
-                'paid_sales_amount' => (float) $paidOrders->sum('total'),
+                'paid_sales_amount' => $grossSales,
                 'direct_commission' => (float) $directCommission,
                 'recruiter_commission' => (float) $recruiterCommission,
+                'gross_sales' => $grossSales,
+                'total_commissions' => $totalCommissions,
+                'net_business_revenue' => max(0, $grossSales - $totalCommissions),
+                'sale_breakdown' => $saleBreakdown,
             ];
         });
 
@@ -62,6 +86,7 @@ class PartnerDashboardController extends Controller
             'totalSales' => (int) $programStats->sum('paid_orders'),
             'totalSalesAmount' => (float) $programStats->sum('paid_sales_amount'),
             'totalRecruited' => (int) $programStats->sum('recruited_partners_count'),
+            'totalNetBusinessRevenue' => (float) $programStats->sum('net_business_revenue'),
         ]);
     }
 }
