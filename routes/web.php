@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AnalyticsController;
+use App\Http\Controllers\Admin\SuperAdminAnalyticsController;
 use App\Http\Controllers\Admin\BusinessController as AdminBusinessController;
 use App\Http\Controllers\Admin\BusinessPayoutController as AdminBusinessPayoutController;
 use App\Http\Controllers\Admin\CommissionController;
@@ -60,11 +61,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
     Route::get('/network', [NetworkController::class, 'index'])->middleware('role:super_admin|program_manager|partner')->name('network.index');
 });
-
 Route::middleware(['auth', 'role:customer'])->group(function () { Route::get('/customer/dashboard', [CustomerDashboardController::class, 'index'])->name('customer.dashboard'); });
 Route::get('/business/start', [BusinessOnboardingController::class, 'start'])->name('business.start');
 Route::middleware(['auth', 'role:super_admin'])->prefix('admin')->group(function () {
     Route::get('/', [AdminDashboardController::class, 'index'])->name('admin');
+    Route::get('/analytics/businesses', [SuperAdminAnalyticsController::class, 'businesses'])->name('admin.analytics.businesses');
+    Route::get('/analytics/businesses/{business}', [SuperAdminAnalyticsController::class, 'business'])->name('admin.analytics.business');
+    Route::get('/analytics/businesses/{business}/partners/{programPartner}', [SuperAdminAnalyticsController::class, 'partner'])->name('admin.analytics.partner');
     Route::get('/analytics/{metric}', [AnalyticsController::class, 'show'])->name('admin.analytics.show');
     Route::get('/settings', [AdminSettingsController::class, 'edit'])->name('admin.settings'); Route::put('/settings', [AdminSettingsController::class, 'update'])->name('admin.settings.update');
     Route::get('/businesses', [AdminBusinessController::class, 'index'])->name('admin.businesses.index'); Route::patch('/businesses/{business}/approve', [AdminBusinessController::class, 'approve'])->name('admin.businesses.approve'); Route::patch('/businesses/{business}/reject', [AdminBusinessController::class, 'reject'])->name('admin.businesses.reject');
