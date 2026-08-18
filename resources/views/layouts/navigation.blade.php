@@ -21,9 +21,9 @@
     ];
 @endphp
 
-<nav class="relative z-50">
+<nav class="relative z-50 {{ $isAdmin ? 'h-0' : '' }}">
     @if($isAdmin)
-        <div class="min-h-screen bg-[#f6f7fb]">
+        <div class="bg-[#f6f7fb]">
             <aside :class="adminSidebarCollapsed ? 'w-[82px]' : 'w-[264px]'" class="fixed inset-y-0 left-0 hidden border-r border-slate-200/80 bg-white transition-all duration-300 lg:flex lg:flex-col">
                 <div class="flex h-[78px] items-center border-b border-slate-100 px-5">
                     <a href="{{ route('admin') }}" class="flex min-w-0 items-center gap-3">
