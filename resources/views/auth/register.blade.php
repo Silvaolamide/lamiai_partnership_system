@@ -1,6 +1,6 @@
 <x-guest-layout>
     <div class="mb-8">
-        <div class="mb-3 inline-flex items-center rounded-full bg-orange-50 px-3 py-1 text-xs font-bold uppercase tracking-wider text-orange-600">Start growing</div>
+        <div class="mb-3 inline-flex items-center rounded-full bg-orange-50 px-3 py-1 text-xs font-bold uppercase tracking-wider text-orange-600">Business account</div>
         <h2 class="text-3xl font-extrabold tracking-tight text-[#171323]">Create your business account.</h2>
         <p class="mt-2 text-sm leading-6 text-gray-500">Launch an affiliate program and turn your network into a predictable sales channel.</p>
     </div>
@@ -14,7 +14,7 @@
         </div>
     @endif
 
-    <form method="POST" action="{{ route('register') }}" class="space-y-5">
+    <form method="POST" action="{{ route('business.register') }}" class="space-y-5">
         @csrf
         <div>
             <x-input-label for="name" value="Your name" class="mb-2 font-semibold text-gray-700" />
@@ -41,13 +41,15 @@
             </div>
         </div>
 
-        <p class="text-xs leading-5 text-gray-400">By creating an account, you agree to use AIPM responsibly and to the platform's terms.</p>
+        <p class="text-xs leading-5 text-gray-400">By creating a business account, you agree to use AIPM responsibly and to the platform's terms.</p>
 
         <button type="submit" class="brand-btn flex w-full items-center justify-center rounded-xl px-5 py-3.5 text-sm font-bold text-white shadow-lg shadow-violet-700/15">
             Create business account <span class="ml-2 text-lg">→</span>
         </button>
     </form>
 
-    <div class="my-7 flex items-center gap-4"><div class="h-px flex-1 bg-gray-100"></div><span class="text-xs font-medium text-gray-400">ALREADY A MEMBER?</span><div class="h-px flex-1 bg-gray-100"></div></div>
-    <a href="{{ route('login') }}" class="flex w-full items-center justify-center rounded-xl border border-gray-200 px-5 py-3.5 text-sm font-bold text-gray-700 transition hover:border-violet-200 hover:bg-violet-50 hover:text-violet-700">Sign in instead</a>
+    <div class="my-7 flex items-center gap-4"><div class="h-px flex-1 bg-gray-100"></div><span class="text-xs font-medium text-gray-400">ALREADY A BUSINESS MEMBER?</span><div class="h-px flex-1 bg-gray-100"></div></div>
+    <a href="{{ route('business.login') }}" class="flex w-full items-center justify-center rounded-xl border border-gray-200 px-5 py-3.5 text-sm font-bold text-gray-700 transition hover:border-violet-200 hover:bg-violet-50 hover:text-violet-700">Business login</a>
+
+    <p class="mt-6 text-center text-xs text-gray-400">Just buying a product? <a href="{{ route('customer.register') }}" class="font-semibold text-violet-700">Create a customer account</a>.</p>
 </x-guest-layout>
