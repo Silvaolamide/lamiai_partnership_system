@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Controllers\Admin\AdminAnalyticsController;
 use App\Http\Controllers\Admin\AnalyticsController;
 use App\Http\Controllers\Admin\BusinessController as AdminBusinessController;
 use App\Http\Controllers\Admin\BusinessPayoutController as AdminBusinessPayoutController;
