@@ -49,16 +49,17 @@ class AdminAnalyticsService
         $commissionTotal = (float) (clone $commissions)->sum('commission_amount');
         $programScope = PartnershipProgram::query()->when($businessId, fn ($q) => $q->where('owner_id', $businessId))->when($programId, fn ($q) => $q->whereKey($programId));
         $programIds = $programScope->select('id');
+        $payouts = Payout::query()->whereIn('status', ['requested', 'pending', 'approved'])->when($businessId, fn ($q) => $q->whereIn('program_id', PartnershipProgram::select('id')->where('owner_id', $businessId)))->when($programId, fn ($q) => $q->where('program_id', $programId));
 
         return [
             'gross_sales' => $gross, 'commission_total' => $commissionTotal, 'net_revenue' => max(0, $gross - $commissionTotal), 'orders' => (clone $orders)->count(),
             'partners' => ProgramPartner::whereIn('program_id', $programIds)->count(), 'active_partners' => ProgramPartner::whereIn('program_id', $programIds)->where('status', 'active')->count(),
             'pending_partners' => ProgramPartner::whereIn('program_id', $programIds)->where('status', 'pending')->count(), 'programs' => (clone $programScope)->count(),
-            'products' => Product::whereHas('partnershipPrograms', fn ($q) => $q->whereIn('partnership_programs.id', $programIds))->count(),
+            'products' => ($businessId || $programId) ? Product::whereHas('partnershipPrograms', fn ($q) => $q->whereIn('partnership_programs.id', $programIds))->count() : Product::count(),
             'customers' => (clone $orders)->whereNotNull('customer_id')->distinct()->count('customer_id'),
             'payable' => (float) $this->commissionQuery($from, $to, $businessId, $programId)->whereIn('status', ['available', 'approved', 'payable'])->sum('commission_amount'),
             'paid_commissions' => (float) $this->commissionQuery($from, $to, $businessId, $programId)->where('status', 'paid')->sum('commission_amount'),
-            'pending_payouts' => (float) Payout::whereIn('status', ['requested', 'pending', 'approved'])->sum('amount'),
+            'pending_payouts' => (float) $payouts->sum('amount'),
         ];
     }
 
