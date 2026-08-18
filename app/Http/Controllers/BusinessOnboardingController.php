@@ -18,7 +18,7 @@ class BusinessOnboardingController extends Controller
     {
         if (!$request->user()) {
             $request->session()->put('business_onboarding_intent', true);
-            return redirect()->route('register');
+            return redirect()->route('business.register');
         }
 
         if (!$request->user()->hasVerifiedEmail() || !$request->user()->business_super_admin_approved_at) {
