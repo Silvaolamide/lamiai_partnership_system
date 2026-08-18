@@ -1,45 +1,7 @@
 <x-app-layout>
-    <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <div><h2 class="font-semibold text-xl text-gray-800 leading-tight">Business Applications</h2><p class="text-sm text-gray-500 mt-1">Approve businesses before they can start building affiliate programs.</p></div>
-            <a href="{{route('admin.settings')}}" class="rounded-xl border px-4 py-2 text-sm font-bold">Approval settings</a>
-        </div>
-    </x-slot>
-
-    <div class="py-8">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            @if(session('success'))<div class="mb-5 rounded-xl bg-emerald-50 text-emerald-700 px-4 py-3">{{session('success')}}</div>@endif
-            <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                <div class="overflow-x-auto">
-                    <table class="min-w-full text-sm">
-                        <thead class="bg-gray-50 text-gray-500"><tr><th class="text-left p-4">Business</th><th class="text-left p-4">Contact</th><th class="text-left p-4">Email</th><th class="text-left p-4">Email verification</th><th class="text-left p-4">Approval</th><th class="text-right p-4">Action</th></tr></thead>
-                        <tbody class="divide-y">
-                        @forelse($businesses as $business)
-                            <tr>
-                                <td class="p-4"><b>{{ $business->business_name ?: $business->name }}</b><p class="text-xs text-gray-400">{{ $business->business_industry ?: 'Business profile not completed' }}</p></td>
-                                <td class="p-4">{{ $business->name }}<p class="text-xs text-gray-400">{{ $business->business_phone ?: '—' }}</p></td>
-                                <td class="p-4">{{ $business->email }}</td>
-                                <td class="p-4"><span class="rounded-full px-2 py-1 text-xs font-bold {{ $business->hasVerifiedEmail() ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700' }}">{{ $business->hasVerifiedEmail() ? 'VERIFIED' : 'UNVERIFIED' }}</span></td>
-                                <td class="p-4"><span class="rounded-full px-2 py-1 text-xs font-bold {{ $business->business_super_admin_approved_at ? 'bg-emerald-100 text-emerald-700' : ($business->business_rejected_at ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700') }}">{{ $business->business_super_admin_approved_at ? 'APPROVED' : ($business->business_rejected_at ? 'REJECTED' : 'PENDING') }}</span></td>
-                                <td class="p-4 text-right">
-                                    @if(!$business->business_super_admin_approved_at)
-                                        <div class="flex justify-end gap-2">
-                                            <form method="POST" action="{{route('admin.businesses.approve',$business)}}">@csrf @method('PATCH')<button class="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white">Approve</button></form>
-                                            <form method="POST" action="{{route('admin.businesses.reject',$business)}}">@csrf @method('PATCH')<button class="rounded-lg border border-red-200 px-3 py-2 text-xs font-bold text-red-600">Reject</button></form>
-                                        </div>
-                                    @else
-                                        <span class="text-xs text-gray-400">Approved</span>
-                                    @endif
-                                </td>
-                            </tr>
-                        @empty
-                            <tr><td colspan="6" class="p-12 text-center text-gray-500">No business applications yet.</td></tr>
-                        @endforelse
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-            <div class="mt-6">{{$businesses->links()}}</div>
-        </div>
-    </div>
-</x-app-layout>
+<x-slot name="header"><div><p class="text-xs font-black uppercase tracking-widest text-violet-600">Platform control</p><h2 class="font-black text-2xl text-gray-900">Businesses</h2><p class="text-sm text-gray-500 mt-1">See every business, portfolio size, partner network and sales performance without opening each account.</p></div></x-slot>
+<div class="py-6 bg-slate-50 min-h-screen"><div class="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8"><x-admin.command-nav />
+@if(session('success'))<div class="mb-4 rounded-2xl bg-emerald-50 border border-emerald-200 p-4 text-emerald-700">{{session('success')}}</div>@endif
+<div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-5"><div class="rounded-2xl bg-white border p-4"><span class="text-xs text-slate-400">Businesses</span><b class="block text-2xl mt-1">{{ $businesses->total() }}</b></div><div class="rounded-2xl bg-white border p-4"><span class="text-xs text-slate-400">Page</span><b class="block text-2xl mt-1">{{ $businesses->count() }}</b></div><div class="rounded-2xl bg-white border p-4"><span class="text-xs text-slate-400">Action</span><b class="block text-sm mt-2 text-violet-700">Open a portfolio</b></div></div>
+<div class="rounded-2xl border bg-white shadow-sm overflow-hidden"><div class="p-5 border-b flex flex-col md:flex-row md:items-center md:justify-between gap-3"><div><h3 class="font-black">Business portfolio directory</h3><p class="text-sm text-slate-500">One row gives you the business context you need to decide what to inspect next.</p></div><a href="{{route('admin.analytics.businesses')}}" class="rounded-xl bg-violet-600 text-white px-4 py-2 text-sm font-black">Business intelligence →</a></div><div class="overflow-x-auto"><table class="min-w-full text-sm"><thead class="bg-slate-50 text-slate-500"><tr><th class="p-4 text-left">Business</th><th class="p-4 text-left">Approval</th><th class="p-4">Programs</th><th class="p-4">Partners</th><th class="p-4">Orders</th><th class="p-4 text-right">Paid sales</th><th class="p-4">Next action</th></tr></thead><tbody class="divide-y">@forelse($businesses as $business)<tr class="hover:bg-violet-50/40"><td class="p-4"><div class="font-black">{{ $business->business_name ?: $business->name }}</div><div class="text-xs text-slate-400">{{ $business->email }}</div></td><td class="p-4"><span class="rounded-full px-2.5 py-1 text-xs font-bold {{ $business->business_super_admin_approved_at ? 'bg-emerald-100 text-emerald-700' : ($business->business_rejected_at ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700') }}">{{ $business->business_super_admin_approved_at ? 'Approved' : ($business->business_rejected_at ? 'Rejected' : 'Pending') }}</span></td><td class="p-4 text-center">{{ $business->admin_metrics['programs'] }}</td><td class="p-4 text-center"><b>{{ $business->admin_metrics['partners'] }}</b><small class="block text-xs text-slate-400">{{ $business->admin_metrics['active_partners'] }} active</small></td><td class="p-4 text-center">{{ $business->admin_metrics['orders'] }}</td><td class="p-4 text-right font-black">₦{{ number_format($business->admin_metrics['sales'],2) }}</td><td class="p-4"><div class="flex flex-wrap gap-2"><a class="rounded-lg bg-slate-900 text-white px-3 py-2 text-xs font-black" href="{{route('admin.analytics.business',$business)}}">Portfolio →</a>@if(!$business->business_super_admin_approved_at && !$business->business_rejected_at)<form method="POST" action="{{route('admin.businesses.approve',$business)}}">@csrf @method('PATCH')<button class="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-700">Approve</button></form>@endif</div></td></tr>@empty<tr><td colspan="7" class="p-10 text-center text-slate-400">No businesses found.</td></tr>@endforelse</tbody></table></div><div class="p-4">{{$businesses->links()}}</div></div>
+</div></div></x-app-layout>
