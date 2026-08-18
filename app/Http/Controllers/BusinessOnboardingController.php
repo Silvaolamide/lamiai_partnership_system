@@ -36,8 +36,18 @@ class BusinessOnboardingController extends Controller
     public function show(Request $request, string $step): View|RedirectResponse
     {
         abort_unless(array_key_exists($step, self::STEPS), 404);
-        $data = $request->session()->get('business_onboarding', []);
+
         $user = $request->user();
+
+        // Email verification is enforced by the route middleware. Approval is
+        // deliberately checked here because onboarding is reachable before the
+        // business approval middleware and must show the pending state until a
+        // super admin approves the business.
+        if (!$user->business_super_admin_approved_at) {
+            return redirect()->route('business.pending');
+        }
+
+        $data = $request->session()->get('business_onboarding', []);
 
         if ($step === 'profile' && empty($data['profile'])) {
             $data['profile'] = [
