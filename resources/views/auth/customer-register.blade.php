@@ -49,7 +49,7 @@
     </form>
 
     <div class="my-7 flex items-center gap-4"><div class="h-px flex-1 bg-gray-100"></div><span class="text-xs font-medium text-gray-400">ALREADY HAVE AN ACCOUNT?</span><div class="h-px flex-1 bg-gray-100"></div></div>
-    <a href="{{ route('customer.login') }}" class="flex w-full items-center justify-center rounded-xl border border-gray-200 px-5 py-3.5 text-sm font-bold text-gray-700 transition hover:border-violet-200 hover:bg-violet-50 hover:text-violet-700">Sign in instead</a>
+    <a href="{{ route('customer.login', ['continue' => session('url.intended')]) }}" class="flex w-full items-center justify-center rounded-xl border border-gray-200 px-5 py-3.5 text-sm font-bold text-gray-700 transition hover:border-violet-200 hover:bg-violet-50 hover:text-violet-700">Sign in instead</a>
 
     <p class="mt-6 text-center text-xs text-gray-400">Looking to sell products or manage an affiliate program? <a href="{{ route('business.start') }}" class="font-semibold text-violet-700">Register as a business</a>.</p>
 </x-guest-layout>
