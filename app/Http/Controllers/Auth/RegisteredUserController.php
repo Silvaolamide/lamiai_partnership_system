@@ -18,9 +18,11 @@ class RegisteredUserController extends Controller
     /**
      * Display the registration view.
      */
-    public function create(): View
+    public function create(Request $request): View
     {
-        return view('auth.register');
+        return view('auth.register', [
+            'context' => $request->query('context', 'general'),
+        ]);
     }
 
     /**
@@ -45,6 +47,10 @@ class RegisteredUserController extends Controller
         event(new Registered($user));
 
         Auth::login($user);
+
+        if ($request->session()->has('pending_checkout_product_id')) {
+            return redirect()->route('checkout.start');
+        }
 
         return redirect(route('dashboard', absolute: false));
     }
