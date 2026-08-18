@@ -32,27 +32,41 @@ function analyticsProgram(User $business, string $name): PartnershipProgram
     ]);
 }
 
+function analyticsPartner(PartnershipProgram $program, string $code): ProgramPartner
+{
+    return ProgramPartner::create([
+        'program_id' => $program->id,
+        'user_id' => User::factory()->create()->id,
+        'partner_code' => $code,
+        'status' => 'active',
+        'joined_at' => now(),
+        'approved_at' => now(),
+    ]);
+}
+
 test('admin analytics uses commission_amount and filters by business and program', function () {
     $businessA = analyticsBusiness();
     $businessB = analyticsBusiness();
     $programA = analyticsProgram($businessA, 'Program A');
     $programB = analyticsProgram($businessB, 'Program B');
+    $partnerA = analyticsPartner($programA, 'ANALYTICS-A');
+    $partnerB = analyticsPartner($programB, 'ANALYTICS-B');
 
-    Order::create([
+    $orderA = Order::create([
         'order_number' => 'A-'.uniqid(), 'program_id' => $programA->id, 'subtotal' => 10000, 'discount' => 0, 'total' => 10000,
         'currency' => 'NGN', 'status' => 'paid', 'payment_provider' => 'test', 'payment_reference' => uniqid(), 'paid_at' => now(),
     ]);
-    Order::create([
+    $orderB = Order::create([
         'order_number' => 'B-'.uniqid(), 'program_id' => $programB->id, 'subtotal' => 20000, 'discount' => 0, 'total' => 20000,
         'currency' => 'NGN', 'status' => 'paid', 'payment_provider' => 'test', 'payment_reference' => uniqid(), 'paid_at' => now(),
     ]);
 
     Commission::create([
-        'program_id' => $programA->id, 'order_id' => Order::where('program_id', $programA->id)->first()->id, 'level' => 1,
+        'program_id' => $programA->id, 'partner_id' => $partnerA->id, 'order_id' => $orderA->id, 'level' => 1,
         'commission_type' => 'percentage', 'rate' => 10, 'base_amount' => 10000, 'commission_amount' => 1000, 'status' => 'approved',
     ]);
     Commission::create([
-        'program_id' => $programB->id, 'order_id' => Order::where('program_id', $programB->id)->first()->id, 'level' => 1,
+        'program_id' => $programB->id, 'partner_id' => $partnerB->id, 'order_id' => $orderB->id, 'level' => 1,
         'commission_type' => 'percentage', 'rate' => 10, 'base_amount' => 20000, 'commission_amount' => 2000, 'status' => 'approved',
     ]);
 
