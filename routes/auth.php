@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\ConfirmablePasswordController;
+use App\Http\Controllers\Auth\CustomerAuthController;
 use App\Http\Controllers\Auth\EmailVerificationNotificationController;
 use App\Http\Controllers\Auth\EmailVerificationPromptController;
 use App\Http\Controllers\Auth\NewPasswordController;
@@ -12,15 +13,31 @@ use App\Http\Controllers\Auth\VerifyEmailController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function () {
+    // Business authentication remains available at the legacy /register and
+    // /login routes, with explicit business aliases for clearer navigation.
+    Route::get('business/register', [RegisteredUserController::class, 'create'])
+        ->name('business.register');
+    Route::post('business/register', [RegisteredUserController::class, 'store']);
+
     Route::get('register', [RegisteredUserController::class, 'create'])
         ->name('register');
-
     Route::post('register', [RegisteredUserController::class, 'store']);
+
+    Route::get('business/login', [AuthenticatedSessionController::class, 'create'])
+        ->name('business.login');
+    Route::post('business/login', [AuthenticatedSessionController::class, 'store']);
 
     Route::get('login', [AuthenticatedSessionController::class, 'create'])
         ->name('login');
-
     Route::post('login', [AuthenticatedSessionController::class, 'store']);
+
+    Route::get('customer/register', [CustomerAuthController::class, 'createRegister'])
+        ->name('customer.register');
+    Route::post('customer/register', [CustomerAuthController::class, 'register']);
+
+    Route::get('customer/login', [CustomerAuthController::class, 'createLogin'])
+        ->name('customer.login');
+    Route::post('customer/login', [CustomerAuthController::class, 'login']);
 
     Route::get('forgot-password', [PasswordResetLinkController::class, 'create'])
         ->name('password.request');
