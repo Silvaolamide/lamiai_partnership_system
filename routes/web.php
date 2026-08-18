@@ -60,12 +60,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/business/onboarding/{step}', [BusinessOnboardingController::class, 'store'])->name('business.onboarding.store');
     });
 
-    // The network tree contains private recruitment relationships. It is
-    // intentionally limited to super admins and partners; business users do
-    // not get platform-wide visibility into partner genealogy.
     Route::get('/network', [NetworkController::class, 'index'])
         ->middleware('role:super_admin|partner')
         ->name('network.index');
+
+    // After customer authentication, this GET endpoint creates the order for
+    // the exact product the customer originally chose.
+    Route::get('/checkout/start/{productId}', [CheckoutController::class, 'start'])
+        ->name('checkout.start');
 });
 
 Route::get('/business/start', [BusinessOnboardingController::class, 'start'])->name('business.start');
@@ -125,7 +127,6 @@ Route::get('/', function () {
 Route::get('/dashboard', function () {
     $user = request()->user();
 
-    // Use the most privileged role first in case a user has multiple roles.
     if ($user->hasRole('super_admin')) {
         return redirect()->route('admin');
     }
@@ -138,8 +139,6 @@ Route::get('/dashboard', function () {
         return redirect()->route('partner.dashboard');
     }
 
-    // Authenticated users without a platform role (for example customers)
-    // should return to the public storefront rather than see a blank dashboard.
     return redirect()->route('home');
 })->middleware(['auth', 'verified'])->name('dashboard');
 
@@ -151,8 +150,23 @@ Route::middleware('auth')->group(function () {
 Route::get('/product/{slug}', [ProductShowController::class, 'show'])->name('product.show');
 Route::get('/checkout/paystack/callback', [CheckoutController::class, 'paystackCallback'])->name('checkout.paystack.callback');
 Route::post('/webhooks/paystack', [CheckoutController::class, 'paystackWebhook'])->name('webhooks.paystack');
+
+// Purchase attempts from a guest are redirected into the customer auth flow.
+// Authenticated users continue through the existing order creation logic.
+Route::post('/checkout', function (\Illuminate\Http\Request $request) {
+    if (!auth()->check()) {
+        $productId = $request->input('product_id');
+        abort_unless($productId && \App\Models\Product::whereKey($productId)->exists(), 404);
+
+        return redirect()->route('customer.login', [
+            'continue' => route('checkout.start', ['productId' => $productId]),
+        ]);
+    }
+
+    return app(CheckoutController::class)->create($request);
+})->name('checkout.create');
+
 Route::middleware('auth')->group(function () {
-    Route::post('/checkout', [CheckoutController::class, 'create'])->name('checkout.create');
     Route::get('/checkout/{orderId}', [CheckoutController::class, 'show'])->name('checkout.show');
     Route::post('/checkout/{orderId}/paystack', [CheckoutController::class, 'paystack'])->name('checkout.paystack');
     Route::post('/checkout/{orderId}/confirm-demo', [CheckoutController::class, 'confirm'])->name('checkout.confirm');
