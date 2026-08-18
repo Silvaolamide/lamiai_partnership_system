@@ -30,6 +30,18 @@ class CheckoutController extends Controller
         $this->paystackService = $paystackService;
     }
 
+    /**
+     * GET handoff used after customer authentication. It keeps the normal
+     * order creation logic in one place while allowing a guest to return to
+     * the exact product they intended to buy.
+     */
+    public function start(Request $request, $productId)
+    {
+        $request->merge(['product_id' => $productId]);
+
+        return $this->create($request);
+    }
+
     public function create(Request $request)
     {
         $validated = $request->validate(['product_id' => ['required', 'exists:products,id']]);
@@ -98,8 +110,6 @@ class CheckoutController extends Controller
         $order = Order::with(['items', 'items.product', 'partner.user', 'program'])
             ->findOrFail($orderId);
 
-        // Use the registered OrderPolicy, but explicitly abort here so an
-        // unauthorized customer receives the expected HTTP 403 response.
         if (!Auth::user()->can('view', $order)) {
             abort(403);
         }
@@ -107,9 +117,6 @@ class CheckoutController extends Controller
         return view('checkout.show', compact('order'));
     }
 
-    /**
-     * Initialize a real Paystack transaction and redirect the customer to Paystack.
-     */
     public function paystack(Request $request, $orderId)
     {
         $order = Order::with('customer')->findOrFail($orderId);
@@ -138,10 +145,6 @@ class CheckoutController extends Controller
         }
     }
 
-    /**
-     * Paystack browser callback. The transaction is verified server-side before
-     * the order is marked paid.
-     */
     public function paystackCallback(Request $request)
     {
         $reference = $request->query('reference');
@@ -175,9 +178,6 @@ class CheckoutController extends Controller
         }
     }
 
-    /**
-     * Paystack webhook endpoint. Signature is validated before the event is used.
-     */
     public function paystackWebhook(Request $request)
     {
         $payload = $request->getContent();
@@ -221,9 +221,6 @@ class CheckoutController extends Controller
         return response()->json(['message' => 'Event processed']);
     }
 
-    /**
-     * Demo-only payment endpoint retained for local testing.
-     */
     public function confirm(Request $request, $orderId)
     {
         $request->validate(['payment_method' => ['required', 'in:demo']]);
