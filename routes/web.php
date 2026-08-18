@@ -63,10 +63,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/network', [NetworkController::class, 'index'])
         ->middleware('role:super_admin|partner')
         ->name('network.index');
+});
 
-    Route::get('/customer/dashboard', [CustomerDashboardController::class, 'index'])
-        ->middleware('role:customer')
-        ->name('customer.dashboard');
+Route::middleware(['auth', 'role:customer'])->group(function () {
+    Route::get('/customer/dashboard', [CustomerDashboardController::class, 'index'])->name('customer.dashboard');
 });
 
 Route::get('/business/start', [BusinessOnboardingController::class, 'start'])->name('business.start');
@@ -95,7 +95,7 @@ Route::middleware(['auth', 'role:super_admin'])->prefix('admin')->group(function
     Route::get('/orders/{order}', [OrderController::class, 'show'])->name('admin.orders.show');
     Route::patch('/orders/{order}/mark-paid', [OrderController::class, 'markPaid'])->name('admin.orders.mark-paid');
     Route::patch('/orders/{order}/cancel', [OrderController::class, 'cancel'])->name('admin.orders.cancel');
-    Route::patch('/orders/{order}/refund', [OrderController::class, 'refund'])->name('admin.orders.refund');
+    Route::patch('/orders/{order}/refund', [AdminOrderController::class, 'refund'])->name('admin.orders.refund');
     Route::get('/commissions', [CommissionController::class, 'index'])->name('admin.commissions.index');
     Route::get('/commissions/{commission}', [CommissionController::class, 'show'])->name('admin.commissions.show');
     Route::patch('/commissions/{commission}/approve', [CommissionController::class, 'approve'])->name('admin.commissions.approve');
@@ -153,8 +153,6 @@ Route::middleware('auth')->group(function () {
 
 Route::get('/product/{slug}', [ProductShowController::class, 'show'])->name('product.show');
 
-// Guest checkout is intentionally public. The checkout session protects the
-// pending order from being viewed or paid by another browser.
 Route::post('/checkout', [CheckoutController::class, 'create'])->name('checkout.create');
 Route::get('/checkout/{orderId}', [CheckoutController::class, 'show'])->name('checkout.show');
 Route::post('/checkout/{orderId}/paystack', [CheckoutController::class, 'paystack'])->name('checkout.paystack');
