@@ -95,7 +95,7 @@ Route::middleware(['auth', 'role:super_admin'])->prefix('admin')->group(function
     Route::get('/orders/{order}', [OrderController::class, 'show'])->name('admin.orders.show');
     Route::patch('/orders/{order}/mark-paid', [OrderController::class, 'markPaid'])->name('admin.orders.mark-paid');
     Route::patch('/orders/{order}/cancel', [OrderController::class, 'cancel'])->name('admin.orders.cancel');
-    Route::patch('/orders/{order}/refund', [AdminOrderController::class, 'refund'])->name('admin.orders.refund');
+    Route::patch('/orders/{order}/refund', [OrderController::class, 'refund'])->name('admin.orders.refund');
     Route::get('/commissions', [CommissionController::class, 'index'])->name('admin.commissions.index');
     Route::get('/commissions/{commission}', [CommissionController::class, 'show'])->name('admin.commissions.show');
     Route::patch('/commissions/{commission}/approve', [CommissionController::class, 'approve'])->name('admin.commissions.approve');
