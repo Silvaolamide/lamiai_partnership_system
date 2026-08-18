@@ -47,7 +47,8 @@ class SuperAdminAnalyticsController extends Controller
 
         $partners = ProgramPartner::whereIn('program_id', $programIds)
             ->with(['user', 'parentPartner.user', 'program'])
-            ->withCount('children')->latest()->limit(100)->get();
+            ->withCount('childPartners')
+            ->latest()->limit(100)->get();
 
         $ordersQuery = Order::whereIn('program_id', $programIds);
         $paidOrdersQuery = (clone $ordersQuery)->whereIn('status', AdminAnalyticsService::PAID_STATUSES);
