@@ -26,6 +26,9 @@ use App\Http\Controllers\ProfileController;
 use App\Models\PartnershipProgram;
 use Illuminate\Support\Facades\Route;
 
+Route::middleware('auth')->get('/checkout/start/{productId}', [CheckoutController::class, 'start'])
+    ->name('checkout.start');
+
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/partner/dashboard', [PartnerDashboardController::class, 'index'])->middleware('partner.approved')->name('partner.dashboard');
     Route::get('/partner/pending', fn () => view('partner.pending'))->name('partner.pending');
@@ -63,11 +66,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/network', [NetworkController::class, 'index'])
         ->middleware('role:super_admin|partner')
         ->name('network.index');
-
-    // After customer authentication, this GET endpoint creates the order for
-    // the exact product the customer originally chose.
-    Route::get('/checkout/start/{productId}', [CheckoutController::class, 'start'])
-        ->name('checkout.start');
 });
 
 Route::get('/business/start', [BusinessOnboardingController::class, 'start'])->name('business.start');
@@ -151,8 +149,6 @@ Route::get('/product/{slug}', [ProductShowController::class, 'show'])->name('pro
 Route::get('/checkout/paystack/callback', [CheckoutController::class, 'paystackCallback'])->name('checkout.paystack.callback');
 Route::post('/webhooks/paystack', [CheckoutController::class, 'paystackWebhook'])->name('webhooks.paystack');
 
-// Purchase attempts from a guest are redirected into the customer auth flow.
-// Authenticated users continue through the existing order creation logic.
 Route::post('/checkout', function (\Illuminate\Http\Request $request) {
     if (!auth()->check()) {
         $productId = $request->input('product_id');
