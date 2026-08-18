@@ -23,10 +23,38 @@ class CheckoutController extends Controller
     }
 
     /**
-     * Create a new order from product purchase.
-     * 
-     * @param Request $request
-     * @return \Illuminate\Http\RedirectResponse
+     * Start checkout from a product sales page.
+     * Guests are sent through the customer authentication context and returned here.
+     */
+    public function start(Request $request)
+    {
+        $validated = $request->validate([
+            'product_id' => ['nullable', 'exists:products,id'],
+        ]);
+
+        if (isset($validated['product_id'])) {
+            $product = Product::where('id', $validated['product_id'])
+                ->where('status', 'active')
+                ->firstOrFail();
+
+            $request->session()->put('pending_checkout_product_id', $product->id);
+        }
+
+        if (!Auth::check()) {
+            return redirect()->route('login', ['context' => 'customer']);
+        }
+
+        $productId = $request->session()->pull('pending_checkout_product_id');
+
+        if (!$productId) {
+            return redirect()->route('dashboard');
+        }
+
+        return $this->createOrderForAuthenticatedCustomer($productId, $request);
+    }
+
+    /**
+     * Create a new order from an authenticated product purchase.
      */
     public function create(Request $request)
     {
@@ -34,16 +62,17 @@ class CheckoutController extends Controller
             'product_id' => ['required', 'exists:products,id'],
         ]);
 
-        $product = Product::findOrFail($validated['product_id']);
+        return $this->createOrderForAuthenticatedCustomer($validated['product_id'], $request);
+    }
 
-        // Verify product is active
-        if ($product->status !== 'active') {
-            return redirect()->back()->with('error', 'This product is not available for purchase.');
-        }
+    protected function createOrderForAuthenticatedCustomer(int $productId, Request $request)
+    {
+        $product = Product::where('id', $productId)
+            ->where('status', 'active')
+            ->firstOrFail();
 
         $referral = $this->referralService->getReferral();
 
-        // Create order
         $order = Order::create([
             'order_number' => $this->generateOrderNumber(),
             'customer_id' => Auth::id(),
@@ -56,7 +85,6 @@ class CheckoutController extends Controller
             'status' => 'pending',
         ]);
 
-        // Create order item
         OrderItem::create([
             'order_id' => $order->id,
             'product_id' => $product->id,
@@ -70,16 +98,12 @@ class CheckoutController extends Controller
 
     /**
      * Display checkout page for an order.
-     * 
-     * @param Order $orderId
-     * @return \Illuminate\View\View
      */
     public function show($orderId)
     {
         $order = Order::with(['items', 'items.product', 'partner.user', 'program'])
             ->findOrFail($orderId);
 
-        // Use policy to check authorization
         $this->authorize('view', $order);
 
         return view('checkout.show', compact('order'));
@@ -87,74 +111,49 @@ class CheckoutController extends Controller
 
     /**
      * Confirm payment and mark order as paid.
-     * 
-     * In a real system, this would be called from a payment gateway webhook.
-     * For testing/demo purposes, we'll manually mark the order as paid.
-     * 
-     * @param Order $orderId
-     * @return \Illuminate\Http\RedirectResponse
      */
     public function confirm($orderId)
     {
         $order = Order::findOrFail($orderId);
 
-        // Ensure current user owns this order
         if ($order->customer_id !== Auth::id()) {
             abort(403, 'Unauthorized');
         }
 
-        // Prevent confirming already paid orders
         if ($order->status !== 'pending') {
             return redirect()->route('checkout.show', ['orderId' => $order->id])
                 ->with('error', 'This order has already been processed.');
         }
 
-        // Mark order as paid
         $order->update([
             'status' => 'paid',
             'paid_at' => now(),
             'payment_reference' => $this->generatePaymentReference(),
-            'payment_provider' => 'demo', // demo payment for testing
+            'payment_provider' => 'demo',
         ]);
 
-        // Generate commissions based on commission rules
         try {
             $this->commissionService->generateCommissionsForOrder($order);
         } catch (\Exception $e) {
             \Log::error('Commission generation failed for order ' . $order->id . ': ' . $e->getMessage());
-            // Don't fail the order even if commission generation fails
-            // This can be retried later by admin
         }
 
-        // Clear referral from session
         $this->referralService->clearReferral();
 
         return redirect()->route('order.success', ['orderId' => $order->id])
             ->with('success', 'Payment confirmed! Your order has been processed.');
     }
 
-    /**
-     * Display order success page.
-     * 
-     * @param Order $orderId
-     * @return \Illuminate\View\View
-     */
     public function success($orderId)
     {
         $order = Order::with(['items', 'items.product', 'partner.user', 'program', 'commissions'])
             ->findOrFail($orderId);
 
-        // Use policy to check authorization
         $this->authorize('view', $order);
 
         return view('orders.success', compact('order'));
     }
 
-    /**
-     * Generate unique order number.
-     * 
-     * @return string
-     */
     private function generateOrderNumber()
     {
         do {
@@ -164,11 +163,6 @@ class CheckoutController extends Controller
         return $orderNumber;
     }
 
-    /**
-     * Generate unique payment reference.
-     * 
-     * @return string
-     */
     private function generatePaymentReference()
     {
         return 'PAY-' . Str::uuid();
