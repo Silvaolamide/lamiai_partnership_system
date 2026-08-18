@@ -8,7 +8,6 @@ use App\Models\PartnershipProgram;
 use App\Models\Product;
 use App\Models\ProgramPartner;
 use App\Models\Payout;
-use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -26,23 +25,20 @@ class AdminAnalyticsService
 
     private function constrainProgramScope($query, ?int $businessId = null, ?int $programId = null)
     {
-        return $query
-            ->when($businessId, fn ($q) => $q->whereIn('program_id', PartnershipProgram::select('id')->where('owner_id', $businessId)))
+        return $query->when($businessId, fn ($q) => $q->whereIn('program_id', PartnershipProgram::select('id')->where('owner_id', $businessId)))
             ->when($programId, fn ($q) => $q->where('program_id', $programId));
     }
 
     public function orderQuery(?Carbon $from = null, ?Carbon $to = null, ?int $businessId = null, ?int $programId = null)
     {
         return $this->constrainProgramScope(Order::query()->whereIn('status', self::PAID_STATUSES), $businessId, $programId)
-            ->when($from, fn ($q) => $q->where('created_at', '>=', $from))
-            ->when($to, fn ($q) => $q->where('created_at', '<=', $to));
+            ->when($from, fn ($q) => $q->where('created_at', '>=', $from))->when($to, fn ($q) => $q->where('created_at', '<=', $to));
     }
 
     public function commissionQuery(?Carbon $from = null, ?Carbon $to = null, ?int $businessId = null, ?int $programId = null)
     {
         return $this->constrainProgramScope(Commission::query()->whereNotIn('status', ['reversed', 'cancelled']), $businessId, $programId)
-            ->when($from, fn ($q) => $q->where('created_at', '>=', $from))
-            ->when($to, fn ($q) => $q->where('created_at', '<=', $to));
+            ->when($from, fn ($q) => $q->where('created_at', '>=', $from))->when($to, fn ($q) => $q->where('created_at', '<=', $to));
     }
 
     public function summary(?Carbon $from = null, ?Carbon $to = null, ?int $businessId = null, ?int $programId = null): array
@@ -58,7 +54,7 @@ class AdminAnalyticsService
             'gross_sales' => $gross, 'commission_total' => $commissionTotal, 'net_revenue' => max(0, $gross - $commissionTotal), 'orders' => (clone $orders)->count(),
             'partners' => ProgramPartner::whereIn('program_id', $programIds)->count(), 'active_partners' => ProgramPartner::whereIn('program_id', $programIds)->where('status', 'active')->count(),
             'pending_partners' => ProgramPartner::whereIn('program_id', $programIds)->where('status', 'pending')->count(), 'programs' => (clone $programScope)->count(),
-            'products' => Product::whereIn('id', function ($q) use ($programIds) { $q->select('product_id')->from('partnership_program_product')->whereIn('partnership_program_id', $programIds); })->count(),
+            'products' => Product::whereHas('partnershipPrograms', fn ($q) => $q->whereIn('partnership_programs.id', $programIds))->count(),
             'customers' => (clone $orders)->whereNotNull('customer_id')->distinct()->count('customer_id'),
             'payable' => (float) $this->commissionQuery($from, $to, $businessId, $programId)->whereIn('status', ['available', 'approved', 'payable'])->sum('commission_amount'),
             'paid_commissions' => (float) $this->commissionQuery($from, $to, $businessId, $programId)->where('status', 'paid')->sum('commission_amount'),
