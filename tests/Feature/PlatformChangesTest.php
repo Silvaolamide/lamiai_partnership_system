@@ -225,14 +225,14 @@ class PlatformChangesTest extends TestCase
         $business->update(['email_verified_at' => now()]);
         $business->refresh();
 
-        $this->actingAs($business)
+        $this->actingAs($business->fresh())
             ->get(route('business.onboarding', ['step' => 'profile']))
             ->assertRedirect(route('business.pending'));
 
         $business->update(['business_super_admin_approved_at' => now()]);
         $business->refresh();
 
-        $this->actingAs($business)
+        $this->actingAs($business->fresh())
             ->get(route('business.onboarding', ['step' => 'profile']))
             ->assertOk();
     }
