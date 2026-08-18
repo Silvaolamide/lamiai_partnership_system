@@ -14,6 +14,7 @@ use App\Http\Controllers\BusinessPartnerApprovalController;
 use App\Http\Controllers\BusinessPortalController;
 use App\Http\Controllers\BusinessPayoutController;
 use App\Http\Controllers\CheckoutController;
+use App\Http\Controllers\CustomerDashboardController;
 use App\Http\Controllers\NetworkController;
 use App\Http\Controllers\PartnerController;
 use App\Http\Controllers\PartnerDashboardController;
@@ -55,17 +56,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/business/commissions', [BusinessPortalController::class, 'commissions'])->name('business.commissions.index');
         Route::patch('/business/programs/{program}/partners/{partner}/approve', [BusinessPartnerApprovalController::class, 'approve'])->name('business.affiliates.approve');
         Route::patch('/business/programs/{program}/partners/{partner}/reject', [BusinessPartnerApprovalController::class, 'reject'])->name('business.affiliates.reject');
-
         Route::get('/business/onboarding/{step}', [BusinessOnboardingController::class, 'show'])->name('business.onboarding');
         Route::post('/business/onboarding/{step}', [BusinessOnboardingController::class, 'store'])->name('business.onboarding.store');
     });
 
-    // The network tree contains private recruitment relationships. It is
-    // intentionally limited to super admins and partners; business users do
-    // not get platform-wide visibility into partner genealogy.
     Route::get('/network', [NetworkController::class, 'index'])
         ->middleware('role:super_admin|partner')
         ->name('network.index');
+
+    Route::get('/customer/dashboard', [CustomerDashboardController::class, 'index'])
+        ->middleware('role:customer')
+        ->name('customer.dashboard');
 });
 
 Route::get('/business/start', [BusinessOnboardingController::class, 'start'])->name('business.start');
@@ -125,7 +126,6 @@ Route::get('/', function () {
 Route::get('/dashboard', function () {
     $user = request()->user();
 
-    // Use the most privileged role first in case a user has multiple roles.
     if ($user->hasRole('super_admin')) {
         return redirect()->route('admin');
     }
@@ -138,8 +138,10 @@ Route::get('/dashboard', function () {
         return redirect()->route('partner.dashboard');
     }
 
-    // Authenticated users without a platform role (for example customers)
-    // should return to the public storefront rather than see a blank dashboard.
+    if ($user->hasRole('customer')) {
+        return redirect()->route('customer.dashboard');
+    }
+
     return redirect()->route('home');
 })->middleware(['auth', 'verified'])->name('dashboard');
 
@@ -148,15 +150,17 @@ Route::middleware('auth')->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
+
 Route::get('/product/{slug}', [ProductShowController::class, 'show'])->name('product.show');
+
+// Guest checkout is intentionally public. The checkout session protects the
+// pending order from being viewed or paid by another browser.
+Route::post('/checkout', [CheckoutController::class, 'create'])->name('checkout.create');
+Route::get('/checkout/{orderId}', [CheckoutController::class, 'show'])->name('checkout.show');
+Route::post('/checkout/{orderId}/paystack', [CheckoutController::class, 'paystack'])->name('checkout.paystack');
+Route::post('/checkout/{orderId}/confirm-demo', [CheckoutController::class, 'confirm'])->name('checkout.confirm');
 Route::get('/checkout/paystack/callback', [CheckoutController::class, 'paystackCallback'])->name('checkout.paystack.callback');
 Route::post('/webhooks/paystack', [CheckoutController::class, 'paystackWebhook'])->name('webhooks.paystack');
-Route::middleware('auth')->group(function () {
-    Route::post('/checkout', [CheckoutController::class, 'create'])->name('checkout.create');
-    Route::get('/checkout/{orderId}', [CheckoutController::class, 'show'])->name('checkout.show');
-    Route::post('/checkout/{orderId}/paystack', [CheckoutController::class, 'paystack'])->name('checkout.paystack');
-    Route::post('/checkout/{orderId}/confirm-demo', [CheckoutController::class, 'confirm'])->name('checkout.confirm');
-    Route::get('/order/{orderId}/success', [CheckoutController::class, 'success'])->name('order.success');
-});
+Route::get('/order/{orderId}/post-payment', [CheckoutController::class, 'postPayment'])->name('order.post-payment');
 
 require __DIR__.'/auth.php';
