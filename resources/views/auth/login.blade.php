@@ -1,6 +1,6 @@
 <x-guest-layout>
     <div class="mb-8">
-        <div class="mb-3 inline-flex items-center rounded-full bg-violet-50 px-3 py-1 text-xs font-bold uppercase tracking-wider text-violet-700">Partner portal</div>
+        <div class="mb-3 inline-flex items-center rounded-full bg-violet-50 px-3 py-1 text-xs font-bold uppercase tracking-wider text-violet-700">Business portal</div>
         <h2 class="text-3xl font-extrabold tracking-tight text-[#171323]">Welcome back.</h2>
         <p class="mt-2 text-sm leading-6 text-gray-500">Sign in to manage your affiliate programs, partners and performance.</p>
     </div>
@@ -14,10 +14,10 @@
         </div>
     @endif
 
-    <form method="POST" action="{{ route('login') }}" class="space-y-5">
+    <form method="POST" action="{{ route('business.login') }}" class="space-y-5">
         @csrf
         <div>
-            <x-input-label for="email" value="Email address" class="mb-2 font-semibold text-gray-700" />
+            <x-input-label for="email" value="Business email" class="mb-2 font-semibold text-gray-700" />
             <x-text-input id="email" class="brand-input block w-full rounded-xl border-gray-200 bg-gray-50 px-4 py-3.5 text-sm" type="email" name="email" :value="old('email')" required autofocus autocomplete="username" placeholder="you@company.com" />
             <x-input-error :messages="$errors->get('email')" class="mt-2" />
         </div>
@@ -39,10 +39,12 @@
         </label>
 
         <button type="submit" class="brand-btn flex w-full items-center justify-center rounded-xl px-5 py-3.5 text-sm font-bold text-white shadow-lg shadow-violet-700/15">
-            Sign in to AIPM <span class="ml-2 text-lg">→</span>
+            Sign in to business portal <span class="ml-2 text-lg">→</span>
         </button>
     </form>
 
-    <div class="my-7 flex items-center gap-4"><div class="h-px flex-1 bg-gray-100"></div><span class="text-xs font-medium text-gray-400">NEW TO AIPM?</span><div class="h-px flex-1 bg-gray-100"></div></div>
-    <a href="{{ route('register') }}" class="flex w-full items-center justify-center rounded-xl border border-gray-200 px-5 py-3.5 text-sm font-bold text-gray-700 transition hover:border-violet-200 hover:bg-violet-50 hover:text-violet-700">Create a business account</a>
+    <div class="my-7 flex items-center gap-4"><div class="h-px flex-1 bg-gray-100"></div><span class="text-xs font-medium text-gray-400">NEW BUSINESS?</span><div class="h-px flex-1 bg-gray-100"></div></div>
+    <a href="{{ route('business.register') }}" class="flex w-full items-center justify-center rounded-xl border border-gray-200 px-5 py-3.5 text-sm font-bold text-gray-700 transition hover:border-violet-200 hover:bg-violet-50 hover:text-violet-700">Create a business account</a>
+
+    <p class="mt-6 text-center text-xs text-gray-400">Buying a product? <a href="{{ route('customer.login') }}" class="font-semibold text-violet-700">Customer login</a>.</p>
 </x-guest-layout>
