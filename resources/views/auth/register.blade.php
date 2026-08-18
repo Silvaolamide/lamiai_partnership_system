@@ -18,32 +18,32 @@
         @csrf
         <div>
             <x-input-label for="name" value="Your name" class="mb-2 font-semibold text-gray-700" />
-            <x-text-input id="name" class="lami-input block w-full rounded-xl border-gray-200 bg-gray-50 px-4 py-3.5 text-sm" type="text" name="name" :value="old('name')" required autofocus autocomplete="name" placeholder="e.g. Olamide Agunkejoye" />
+            <x-text-input id="name" class="brand-input block w-full rounded-xl border-gray-200 bg-gray-50 px-4 py-3.5 text-sm" type="text" name="name" :value="old('name')" required autofocus autocomplete="name" placeholder="e.g. Olamide Agunkejoye" />
             <x-input-error :messages="$errors->get('name')" class="mt-2" />
         </div>
 
         <div>
             <x-input-label for="email" value="Business email" class="mb-2 font-semibold text-gray-700" />
-            <x-text-input id="email" class="lami-input block w-full rounded-xl border-gray-200 bg-gray-50 px-4 py-3.5 text-sm" type="email" name="email" :value="old('email')" required autocomplete="username" placeholder="you@company.com" />
+            <x-text-input id="email" class="brand-input block w-full rounded-xl border-gray-200 bg-gray-50 px-4 py-3.5 text-sm" type="email" name="email" :value="old('email')" required autocomplete="username" placeholder="you@company.com" />
             <x-input-error :messages="$errors->get('email')" class="mt-2" />
         </div>
 
         <div class="grid gap-5 sm:grid-cols-2">
             <div>
                 <x-input-label for="password" value="Password" class="mb-2 font-semibold text-gray-700" />
-                <x-text-input id="password" class="lami-input block w-full rounded-xl border-gray-200 bg-gray-50 px-4 py-3.5 text-sm" type="password" name="password" required autocomplete="new-password" placeholder="8+ characters" />
+                <x-text-input id="password" class="brand-input block w-full rounded-xl border-gray-200 bg-gray-50 px-4 py-3.5 text-sm" type="password" name="password" required autocomplete="new-password" placeholder="8+ characters" />
                 <x-input-error :messages="$errors->get('password')" class="mt-2" />
             </div>
             <div>
                 <x-input-label for="password_confirmation" value="Confirm password" class="mb-2 font-semibold text-gray-700" />
-                <x-text-input id="password_confirmation" class="lami-input block w-full rounded-xl border-gray-200 bg-gray-50 px-4 py-3.5 text-sm" type="password" name="password_confirmation" required autocomplete="new-password" placeholder="Repeat password" />
+                <x-text-input id="password_confirmation" class="brand-input block w-full rounded-xl border-gray-200 bg-gray-50 px-4 py-3.5 text-sm" type="password" name="password_confirmation" required autocomplete="new-password" placeholder="Repeat password" />
                 <x-input-error :messages="$errors->get('password_confirmation')" class="mt-2" />
             </div>
         </div>
 
-        <p class="text-xs leading-5 text-gray-400">By creating an account, you agree to use LAMI AI responsibly and to the platform's terms.</p>
+        <p class="text-xs leading-5 text-gray-400">By creating an account, you agree to use AIPM responsibly and to the platform's terms.</p>
 
-        <button type="submit" class="lami-btn flex w-full items-center justify-center rounded-xl px-5 py-3.5 text-sm font-bold text-white shadow-lg shadow-violet-700/15">
+        <button type="submit" class="brand-btn flex w-full items-center justify-center rounded-xl px-5 py-3.5 text-sm font-bold text-white shadow-lg shadow-violet-700/15">
             Create business account <span class="ml-2 text-lg">→</span>
         </button>
     </form>
