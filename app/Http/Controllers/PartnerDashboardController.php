@@ -37,15 +37,8 @@ class PartnerDashboardController extends Controller
                 ->whereHas('order', fn ($query) => $query->where('partner_id', $partner->id))
                 ->count();
 
-            $directCommission = $partner->commissions()
-                ->where('level', 1)
-                ->whereNotIn('status', ['reversed', 'cancelled'])
-                ->sum('commission_amount');
-
-            $recruiterCommission = $partner->commissions()
-                ->where('level', '>', 1)
-                ->whereNotIn('status', ['reversed', 'cancelled'])
-                ->sum('commission_amount');
+            $directCommission = $partner->commissions()->where('level', 1)->whereNotIn('status', ['reversed', 'cancelled'])->sum('commission_amount');
+            $recruiterCommission = $partner->commissions()->where('level', '>', 1)->whereNotIn('status', ['reversed', 'cancelled'])->sum('commission_amount');
 
             $saleBreakdown = $paidOrders->map(function ($order) use ($partner) {
                 $commissions = $order->commissions->whereNotIn('status', ['reversed', 'cancelled'])->values();
@@ -63,6 +56,36 @@ class PartnerDashboardController extends Controller
                     'total_commissions' => (float) $commissions->sum('commission_amount'),
                 ];
             });
+
+            $productPerformance = $partner->program->products->map(function ($product) use ($paidOrders, $partner) {
+                $items = $paidOrders->flatMap(fn ($order) => $order->items->where('product_id', $product->id));
+                $unitsSold = (int) $items->sum('quantity');
+                $revenue = (float) $items->sum('total');
+                $ordersCount = $items->pluck('order_id')->unique()->count();
+                $averageOrderValue = $ordersCount > 0 ? $revenue / $ordersCount : 0;
+                $commission = (float) $paidOrders->flatMap(fn ($order) => $order->commissions->where('partner_id', $partner->id)->whereNotIn('status', ['reversed', 'cancelled']))->filter(function ($commission) use ($product) {
+                    return $commission->order && $commission->order->items->contains('product_id', $product->id);
+                })->sum('commission_amount');
+
+                $lastSale = $items->map(fn ($item) => $item->order)->sortByDesc('created_at')->first();
+
+                return [
+                    'product' => $product,
+                    'units_sold' => $unitsSold,
+                    'orders_count' => $ordersCount,
+                    'revenue' => $revenue,
+                    'commission' => $commission,
+                    'average_order_value' => $averageOrderValue,
+                    'last_sale_at' => optional($lastSale)->created_at,
+                    'is_top_seller' => false,
+                ];
+            });
+
+            $maxRevenue = (float) $productPerformance->max('revenue');
+            $productPerformance = $productPerformance->map(function ($item) use ($maxRevenue) {
+                $item['is_top_seller'] = $maxRevenue > 0 && $item['revenue'] === $maxRevenue;
+                return $item;
+            })->sortByDesc('revenue')->values();
 
             $grossSales = (float) $paidOrders->sum('total');
             $totalCommissions = (float) $saleBreakdown->sum('total_commissions');
@@ -82,8 +105,12 @@ class PartnerDashboardController extends Controller
                 'total_commissions' => $totalCommissions,
                 'net_business_revenue' => max(0, $grossSales - $totalCommissions),
                 'sale_breakdown' => $saleBreakdown,
+                'product_performance' => $productPerformance,
             ];
         });
+
+        $allProducts = $programStats->flatMap(fn ($program) => $program['product_performance']);
+        $topProducts = $allProducts->sortByDesc('revenue')->values();
 
         return view('partner.dashboard', [
             'programStats' => $programStats,
@@ -94,6 +121,7 @@ class PartnerDashboardController extends Controller
             'totalRecruited' => (int) $programStats->sum('recruited_partners_count'),
             'totalNetBusinessRevenue' => (float) $programStats->sum('net_business_revenue'),
             'totalPendingPaymentConfirmations' => (int) $programStats->sum('pending_payment_confirmations'),
+            'topProducts' => $topProducts,
         ]);
     }
 }
