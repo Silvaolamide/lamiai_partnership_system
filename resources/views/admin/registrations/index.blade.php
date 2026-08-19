@@ -14,6 +14,9 @@
         @if(session('success'))
             <div class="mb-4 rounded-2xl bg-emerald-50 border border-emerald-200 p-4 text-emerald-700 font-semibold">{{ session('success') }}</div>
         @endif
+        @if(session('error'))
+            <div class="mb-4 rounded-2xl bg-rose-50 border border-rose-200 p-4 text-rose-700 font-semibold">{{ session('error') }}</div>
+        @endif
 
         <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
             <div class="rounded-2xl bg-white border p-4"><span class="text-xs text-slate-400">Registered accounts</span><b class="block text-2xl mt-1">{{ $users->total() }}</b></div>
@@ -37,7 +40,7 @@
                     <tr>
                         <th class="p-4 text-left">User</th>
                         <th class="p-4 text-left">Email</th>
-                        <th class="p-4">Email</th>
+                        <th class="p-4">Email status</th>
                         <th class="p-4">Business role</th>
                         <th class="p-4">Approval</th>
                         <th class="p-4 text-left">Registration state</th>
@@ -54,39 +57,23 @@
                             $complete = $verified && $businessRole && $approved;
                         @endphp
                         <tr class="hover:bg-violet-50/40 align-top">
-                            <td class="p-4">
-                                <div class="font-black">{{ $user->business_name ?: $user->name }}</div>
-                                <div class="text-xs text-slate-400">ID #{{ $user->id }} · {{ $user->created_at?->format('d M Y H:i') }}</div>
-                            </td>
+                            <td class="p-4"><div class="font-black">{{ $user->business_name ?: $user->name }}</div><div class="text-xs text-slate-400">ID #{{ $user->id }} · {{ $user->created_at?->format('d M Y H:i') }}</div></td>
                             <td class="p-4 text-slate-600">{{ $user->email }}</td>
-                            <td class="p-4">
-                                <span class="rounded-full px-2.5 py-1 text-xs font-bold {{ $verified ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700' }}">{{ $verified ? 'Verified' : 'Not verified' }}</span>
-                            </td>
-                            <td class="p-4">
-                                <span class="rounded-full px-2.5 py-1 text-xs font-bold {{ $businessRole ? 'bg-violet-100 text-violet-700' : 'bg-rose-100 text-rose-700' }}">{{ $businessRole ? 'Program manager' : 'Missing' }}</span>
-                            </td>
-                            <td class="p-4">
-                                <span class="rounded-full px-2.5 py-1 text-xs font-bold {{ $approved ? 'bg-emerald-100 text-emerald-700' : ($rejected ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700') }}">{{ $approved ? 'Approved' : ($rejected ? 'Rejected' : 'Pending') }}</span>
-                            </td>
+                            <td class="p-4"><span class="rounded-full px-2.5 py-1 text-xs font-bold {{ $verified ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700' }}">{{ $verified ? 'Verified' : 'Not verified' }}</span></td>
+                            <td class="p-4"><span class="rounded-full px-2.5 py-1 text-xs font-bold {{ $businessRole ? 'bg-violet-100 text-violet-700' : 'bg-rose-100 text-rose-700' }}">{{ $businessRole ? 'Program manager' : 'Missing' }}</span></td>
+                            <td class="p-4"><span class="rounded-full px-2.5 py-1 text-xs font-bold {{ $approved ? 'bg-emerald-100 text-emerald-700' : ($rejected ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700') }}">{{ $approved ? 'Approved' : ($rejected ? 'Rejected' : 'Pending') }}</span></td>
                             <td class="p-4 min-w-[210px]">
                                 @if($complete)
                                     <span class="inline-flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-700">✓ Registration complete</span>
                                 @else
-                                    <div class="rounded-xl bg-amber-50 border border-amber-100 p-3 text-xs text-amber-800">
-                                        <div class="font-black mb-1">Needs attention</div>
-                                        <ul class="space-y-1 list-disc list-inside">
-                                            @unless($verified)<li>Email verification</li>@endunless
-                                            @unless($businessRole)<li>Business role</li>@endunless
-                                            @unless($approved)<li>Super admin approval</li>@endunless
-                                        </ul>
-                                    </div>
+                                    <div class="rounded-xl bg-amber-50 border border-amber-100 p-3 text-xs text-amber-800"><div class="font-black mb-1">Needs attention</div><ul class="space-y-1 list-disc list-inside">@unless($verified)<li>Email verification</li>@endunless @unless($businessRole)<li>Business role</li>@endunless @unless($approved)<li>Super admin approval</li>@endunless</ul></div>
                                 @endif
                             </td>
-                            <td class="p-4 min-w-[280px]">
+                            <td class="p-4 min-w-[320px]">
                                 <div class="flex flex-wrap gap-2">
                                     @unless($verified)
                                         <form method="POST" action="{{ route('admin.registrations.verify-email', $user) }}">@csrf @method('PATCH')<button class="rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-2 text-xs font-black text-emerald-700">Verify email</button></form>
-                                        <form method="POST" action="{{ route('admin.registrations.resend-verification', $user) }}">@csrf @method('POST')<button class="rounded-lg bg-slate-50 border border-slate-200 px-3 py-2 text-xs font-black text-slate-700">Resend email</button></form>
+                                        <form method="POST" action="{{ route('admin.registrations.resend-verification', $user) }}">@csrf <button class="rounded-lg bg-slate-50 border border-slate-200 px-3 py-2 text-xs font-black text-slate-700">Resend email</button></form>
                                     @endunless
                                     @unless($businessRole)
                                         <form method="POST" action="{{ route('admin.registrations.assign-business-role', $user) }}">@csrf @method('PATCH')<button class="rounded-lg bg-violet-50 border border-violet-200 px-3 py-2 text-xs font-black text-violet-700">Assign business role</button></form>
@@ -96,6 +83,12 @@
                                     @endunless
                                     @if(!$complete)
                                         <form method="POST" action="{{ route('admin.registrations.repair', $user) }}" onsubmit="return confirm('Repair this registration by verifying the email, assigning the business role and approving the business?')">@csrf @method('PATCH')<button class="rounded-lg bg-slate-900 text-white px-3 py-2 text-xs font-black">Repair all</button></form>
+                                    @endif
+                                    @if(!$complete)
+                                        <form method="POST" action="{{ route('admin.registrations.destroy', $user) }}" onsubmit="return confirm('Permanently delete {{ addslashes($user->email) }}? This cannot be undone. The deletion will only proceed if this registration has no associated business activity.')">
+                                            @csrf @method('DELETE')
+                                            <button type="submit" class="rounded-lg bg-rose-50 border border-rose-200 px-3 py-2 text-xs font-black text-rose-700 hover:bg-rose-100">Delete registration</button>
+                                        </form>
                                     @endif
                                 </div>
                             </td>
