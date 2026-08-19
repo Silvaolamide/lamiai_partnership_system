@@ -52,7 +52,18 @@ class DashboardController extends Controller
         }
         $pendingBusinessPartnerApprovals = $businessPartnerApprovalQuery->count();
 
+        // Registrations created without a verified email, business role or approval are recoverable from the admin Registration Center.
+        $incompleteRegistrations = User::query()
+            ->whereDoesntHave('roles', fn ($q) => $q->where('name', 'super_admin'))
+            ->where(function ($q) {
+                $q->whereNull('email_verified_at')
+                    ->orWhereDoesntHave('roles', fn ($role) => $role->where('name', 'program_manager'))
+                    ->orWhereNull('business_super_admin_approved_at');
+            })
+            ->count();
+
         $pendingActions = [
+            ['label' => 'URGENT: Registration recovery', 'count' => $incompleteRegistrations, 'route' => 'admin.registrations.index'],
             ['label' => 'URGENT: Business partner approvals', 'count' => $pendingBusinessPartnerApprovals, 'route' => 'admin.partners.index'],
             ['label' => 'Business approvals', 'count' => $stats['pending_businesses'], 'route' => 'admin.businesses.index'], ['label' => 'Partner approvals', 'count' => $stats['pending_partners'], 'route' => 'admin.partners.index'],
             ['label' => 'Partner payouts', 'count' => Payout::whereIn('status', ['requested', 'pending'])->count(), 'route' => 'admin.payouts.index'], ['label' => 'Business payouts', 'count' => BusinessPayout::whereIn('status', ['requested', 'pending'])->count(), 'route' => 'admin.business-payouts.index'],
@@ -63,11 +74,6 @@ class DashboardController extends Controller
         return view('admin.dashboard', compact('stats', 'recentOrders', 'topPartners', 'programs', 'businesses', 'pendingActions', 'series', 'from', 'to', 'businessOptions', 'programOptions', 'businessId', 'programId'));
     }
 
-    /**
-     * Return recent paid sales for the dashboard's live activity stream.
-     * The endpoint intentionally returns only the small amount of information
-     * needed by the admin UI and is protected by the parent super-admin route.
-     */
     public function realtimeSales(Request $request)
     {
         $limit = min(max((int) $request->input('limit', 10), 1), 25);
