@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Controllers\Admin\AnalyticsController;
-use App\Http\Controllers\Admin\RealtimeController;
 use App\Http\Controllers\Admin\SuperAdminAnalyticsController;
 use App\Http\Controllers\Admin\BusinessController as AdminBusinessController;
 use App\Http\Controllers\Admin\BusinessPayoutController as AdminBusinessPayoutController;
@@ -10,6 +9,8 @@ use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\OrderController;
 use App\Http\Controllers\Admin\PartnerController as AdminPartnerController;
 use App\Http\Controllers\Admin\PayoutController as AdminPayoutController;
+use App\Http\Controllers\Admin\PaymentController as AdminPaymentController;
+use App\Http\Controllers\Admin\PaymentDisputeController as AdminPaymentDisputeController;
 use App\Http\Controllers\Admin\SettingsController as AdminSettingsController;
 use App\Http\Controllers\BusinessDashboardController;
 use App\Http\Controllers\BusinessOnboardingController;
@@ -18,11 +19,13 @@ use App\Http\Controllers\BusinessPortalController;
 use App\Http\Controllers\BusinessPayoutController;
 use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\CustomerDashboardController;
+use App\Http\Controllers\ManualPaymentController;
 use App\Http\Controllers\NetworkController;
 use App\Http\Controllers\PartnerController;
 use App\Http\Controllers\PartnerDashboardController;
 use App\Http\Controllers\PartnerMarketplaceController;
 use App\Http\Controllers\PartnershipProgramController;
+use App\Http\Controllers\PaymentDisputeController;
 use App\Http\Controllers\PayoutController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProductShowController;
@@ -38,13 +41,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/partner/programs/{program}/join', [PartnerMarketplaceController::class, 'join'])->name('partner.marketplace.join');
     Route::get('/partner/payouts', [PayoutController::class, 'index'])->middleware('partner.approved')->name('partner.payouts.index');
     Route::post('/partner/payouts', [PayoutController::class, 'store'])->middleware('partner.approved')->name('partner.payouts.store');
-
-    // Business onboarding must remain reachable after email verification but before
-    // business approval, so the onboarding controller can show the pending state.
     Route::get('/business/pending', [BusinessOnboardingController::class, 'pending'])->name('business.pending');
-    Route::get('/business/onboarding/{step}', [BusinessOnboardingController::class, 'show'])->name('business.onboarding');
-    Route::post('/business/onboarding/{step}', [BusinessOnboardingController::class, 'store'])->name('business.onboarding.store');
-
     Route::middleware('business.approved')->group(function () {
         Route::get('/business/dashboard', [BusinessDashboardController::class, 'index'])->name('business.dashboard');
         Route::get('/business/payouts', [BusinessPayoutController::class, 'index'])->name('business.payouts.index');
@@ -63,6 +60,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/business/commissions', [BusinessPortalController::class, 'commissions'])->name('business.commissions.index');
         Route::patch('/business/programs/{program}/partners/{partner}/approve', [BusinessPartnerApprovalController::class, 'approve'])->name('business.affiliates.approve');
         Route::patch('/business/programs/{program}/partners/{partner}/reject', [BusinessPartnerApprovalController::class, 'reject'])->name('business.affiliates.reject');
+        Route::get('/business/onboarding/{step}', [BusinessOnboardingController::class, 'show'])->name('business.onboarding');
+        Route::post('/business/onboarding/{step}', [BusinessOnboardingController::class, 'store'])->name('business.onboarding.store');
     });
     Route::get('/network', [NetworkController::class, 'index'])->middleware('role:super_admin|program_manager|partner')->name('network.index');
 });
@@ -70,13 +69,14 @@ Route::middleware(['auth', 'role:customer'])->group(function () { Route::get('/c
 Route::get('/business/start', [BusinessOnboardingController::class, 'start'])->name('business.start');
 Route::middleware(['auth', 'role:super_admin'])->prefix('admin')->group(function () {
     Route::get('/', [AdminDashboardController::class, 'index'])->name('admin');
-    Route::get('/realtime/sales', [RealtimeController::class, 'sales'])->name('admin.realtime.sales');
     Route::get('/analytics/businesses', [SuperAdminAnalyticsController::class, 'businesses'])->name('admin.analytics.businesses');
     Route::get('/analytics/businesses/{business}', [SuperAdminAnalyticsController::class, 'business'])->name('admin.analytics.business');
     Route::get('/analytics/businesses/{business}/partners/{programPartner}', [SuperAdminAnalyticsController::class, 'partner'])->name('admin.analytics.partner');
     Route::get('/analytics/{metric}', [AnalyticsController::class, 'show'])->name('admin.analytics.show');
     Route::get('/analytics/{metric}/export', [AnalyticsController::class, 'export'])->name('admin.analytics.export');
     Route::get('/settings', [AdminSettingsController::class, 'edit'])->name('admin.settings'); Route::put('/settings', [AdminSettingsController::class, 'update'])->name('admin.settings.update');
+    Route::get('/payments', [AdminPaymentController::class, 'index'])->name('admin.payments.index'); Route::get('/payments/{payment}', [AdminPaymentController::class, 'show'])->name('admin.payments.show'); Route::patch('/payments/{payment}/confirm', [AdminPaymentController::class, 'confirm'])->name('admin.payments.confirm'); Route::patch('/payments/{payment}/reject', [AdminPaymentController::class, 'reject'])->name('admin.payments.reject');
+    Route::get('/payment-disputes', [AdminPaymentDisputeController::class, 'index'])->name('admin.payment-disputes.index'); Route::patch('/payment-disputes/{dispute}/resolve', [AdminPaymentDisputeController::class, 'resolve'])->name('admin.payment-disputes.resolve');
     Route::get('/businesses', [AdminBusinessController::class, 'index'])->name('admin.businesses.index'); Route::patch('/businesses/{business}/approve', [AdminBusinessController::class, 'approve'])->name('admin.businesses.approve'); Route::patch('/businesses/{business}/reject', [AdminBusinessController::class, 'reject'])->name('admin.businesses.reject');
     Route::get('/partners', [AdminPartnerController::class, 'index'])->name('admin.partners.index'); Route::patch('/partners/{partner}/approve', [AdminPartnerController::class, 'approve'])->name('admin.partners.approve'); Route::patch('/partners/{partner}/reject', [AdminPartnerController::class, 'reject'])->name('admin.partners.reject');
     Route::get('/programs', [PartnershipProgramController::class, 'index'])->name('admin.programs.index'); Route::get('/programs/create', [PartnershipProgramController::class, 'create'])->name('admin.programs.create'); Route::post('/programs', [PartnershipProgramController::class, 'store'])->name('admin.programs.store'); Route::get('/programs/{program}/edit', [PartnershipProgramController::class, 'edit'])->name('admin.programs.edit'); Route::put('/programs/{program}', [PartnershipProgramController::class, 'update'])->name('admin.programs.update');
@@ -90,5 +90,5 @@ Route::get('/', function(){ $programs=PartnershipProgram::query()->where('status
 Route::get('/dashboard', function(){ $user=request()->user(); if($user->hasRole('super_admin')) return redirect()->route('admin'); if($user->hasRole('program_manager')) return redirect()->route('business.dashboard'); if($user->hasRole('partner')) return redirect()->route('partner.dashboard'); if($user->hasRole('customer')) return redirect()->route('customer.dashboard'); return redirect()->route('home'); })->middleware(['auth','verified'])->name('dashboard');
 Route::middleware('auth')->group(function(){ Route::get('/profile',[ProfileController::class,'edit'])->name('profile.edit'); Route::patch('/profile',[ProfileController::class,'update'])->name('profile.update'); Route::delete('/profile',[ProfileController::class,'destroy'])->name('profile.destroy'); });
 Route::get('/product/{slug}',[ProductShowController::class,'show'])->name('product.show');
-Route::post('/checkout',[CheckoutController::class,'create'])->name('checkout.create'); Route::get('/checkout/{orderId}',[CheckoutController::class,'show'])->name('checkout.show'); Route::post('/checkout/{orderId}/paystack',[CheckoutController::class,'paystack'])->name('checkout.paystack'); Route::post('/checkout/{orderId}/confirm-demo',[CheckoutController::class,'confirm'])->name('checkout.confirm'); Route::get('/checkout/paystack/callback',[CheckoutController::class,'paystackCallback'])->name('checkout.paystack.callback'); Route::post('/webhooks/paystack',[CheckoutController::class,'paystackWebhook'])->name('webhooks.paystack'); Route::get('/order/{orderId}/post-payment',[CheckoutController::class,'postPayment'])->name('order.post-payment');
+Route::post('/checkout',[CheckoutController::class,'create'])->name('checkout.create'); Route::get('/checkout/{orderId}',[CheckoutController::class,'show'])->name('checkout.show'); Route::get('/checkout/{order}/bank-transfer',[ManualPaymentController::class,'show'])->name('checkout.bank-transfer'); Route::post('/checkout/{order}/bank-transfer',[ManualPaymentController::class,'submit'])->name('checkout.bank-transfer.submit'); Route::post('/checkout/{order}/dispute',[PaymentDisputeController::class,'store'])->name('checkout.payment-dispute'); Route::post('/checkout/{orderId}/paystack',[CheckoutController::class,'paystack'])->name('checkout.paystack'); Route::post('/checkout/{orderId}/confirm-demo',[CheckoutController::class,'confirm'])->name('checkout.confirm'); Route::get('/checkout/paystack/callback',[CheckoutController::class,'paystackCallback'])->name('checkout.paystack.callback'); Route::post('/webhooks/paystack',[CheckoutController::class,'paystackWebhook'])->name('webhooks.paystack'); Route::get('/order/{orderId}/post-payment',[CheckoutController::class,'postPayment'])->name('order.post-payment');
 require __DIR__.'/auth.php';

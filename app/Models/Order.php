@@ -6,61 +6,16 @@ use Illuminate\Database\Eloquent\Model;
 
 class Order extends Model
 {
-    protected $fillable = [
-        'order_number',
-        'customer_id',
-        'customer_name',
-        'customer_email',
-        'customer_phone',
-        'program_id',
-        'partner_id',
-        'business_payout_id',
-        'subtotal',
-        'discount',
-        'total',
-        'currency',
-        'status',
-        'payment_provider',
-        'payment_reference',
-        'paid_at',
-        'refunded_at',
-    ];
-
-    protected $casts = [
-        'subtotal' => 'decimal:2',
-        'discount' => 'decimal:2',
-        'total' => 'decimal:2',
-        'paid_at' => 'datetime',
-        'refunded_at' => 'datetime',
-    ];
-
-    public function customer()
-    {
-        return $this->belongsTo(User::class, 'customer_id');
-    }
-
-    public function program()
-    {
-        return $this->belongsTo(PartnershipProgram::class);
-    }
-
-    public function partner()
-    {
-        return $this->belongsTo(ProgramPartner::class, 'partner_id');
-    }
-
-    public function businessPayout()
-    {
-        return $this->belongsTo(BusinessPayout::class, 'business_payout_id');
-    }
-
-    public function items()
-    {
-        return $this->hasMany(OrderItem::class);
-    }
-
-    public function commissions()
-    {
-        return $this->hasMany(Commission::class);
-    }
+    protected $fillable = ['order_number','customer_id','customer_name','customer_email','customer_phone','program_id','partner_id','business_payout_id','subtotal','discount','total','currency','status','payment_method','payment_provider','payment_reference','paid_at','refunded_at'];
+    protected $casts = ['subtotal'=>'decimal:2','discount'=>'decimal:2','total'=>'decimal:2','paid_at'=>'datetime','refunded_at'=>'datetime'];
+    public function customer(){ return $this->belongsTo(User::class,'customer_id'); }
+    public function program(){ return $this->belongsTo(PartnershipProgram::class); }
+    public function partner(){ return $this->belongsTo(ProgramPartner::class,'partner_id'); }
+    public function businessPayout(){ return $this->belongsTo(BusinessPayout::class,'business_payout_id'); }
+    public function items(){ return $this->hasMany(OrderItem::class); }
+    public function commissions(){ return $this->hasMany(Commission::class); }
+    public function paymentSubmissions(){ return $this->hasMany(PaymentSubmission::class); }
+    public function latestPaymentSubmission(){ return $this->hasOne(PaymentSubmission::class)->latestOfMany(); }
+    public function paymentDisputes(){ return $this->hasMany(PaymentDispute::class); }
+    public function latestPaymentDispute(){ return $this->hasOne(PaymentDispute::class)->latestOfMany(); }
 }
