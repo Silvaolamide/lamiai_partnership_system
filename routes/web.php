@@ -69,6 +69,7 @@ Route::middleware(['auth', 'role:customer'])->group(function () { Route::get('/c
 Route::get('/business/start', [BusinessOnboardingController::class, 'start'])->name('business.start');
 Route::middleware(['auth', 'role:super_admin'])->prefix('admin')->group(function () {
     Route::get('/', [AdminDashboardController::class, 'index'])->name('admin');
+    Route::get('/realtime/sales', [AdminDashboardController::class, 'realtimeSales'])->name('admin.realtime.sales');
     Route::get('/analytics/businesses', [SuperAdminAnalyticsController::class, 'businesses'])->name('admin.analytics.businesses');
     Route::get('/analytics/businesses/{business}', [SuperAdminAnalyticsController::class, 'business'])->name('admin.analytics.business');
     Route::get('/analytics/businesses/{business}/partners/{programPartner}', [SuperAdminAnalyticsController::class, 'partner'])->name('admin.analytics.partner');
