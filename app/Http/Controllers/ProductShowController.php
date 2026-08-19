@@ -41,19 +41,24 @@ class ProductShowController extends Controller
                 $referralProcessed = true;
                 $referringPartner = $this->referralService->getProgramPartner();
             } else {
-                // A valid partner code can still be invalid for this product.
-                // Do not leave the previous attribution in the customer's session.
                 $this->referralService->clearReferral();
                 $referralError = 'This referral link is not valid for this product.';
             }
         } elseif (is_array($result)) {
-            // An explicitly supplied but invalid/inactive referral code must
-            // replace, not preserve, any previous referral attribution.
             $this->referralService->clearReferral();
             $referralError = $result['error'];
         }
 
-        return view('products.show', [
+        $landingPages = config('landing_pages', []);
+        $selectedLandingPage = data_get($product->metadata, 'landing_page', 'classic');
+
+        if (! isset($landingPages[$selectedLandingPage])) {
+            $selectedLandingPage = 'classic';
+        }
+
+        $view = $landingPages[$selectedLandingPage]['view'] ?? 'products.show';
+
+        return view($view, [
             'product' => $product,
             'referralProcessed' => $referralProcessed,
             'referralError' => $referralError,
