@@ -39,22 +39,17 @@ class DashboardController extends Controller
             $business->dashboard_metrics = ['programs' => $programIds->count(), 'partners' => ProgramPartner::whereIn('program_id', $programIds)->count(), 'orders' => (clone $paid)->count(), 'sales' => (float) (clone $paid)->sum('total')]; return $business;
         });
 
-        // This is the urgent queue for partner applications where a business must make the approval decision.
         $businessPartnerApprovalQuery = ProgramPartner::query()
             ->where('status', 'pending')
             ->whereNull('business_approved_at')
             ->whereHas('program', fn ($q) => $q->where('settings->partner_business_approval_required', true));
-        if ($businessId) {
-            $businessPartnerApprovalQuery->whereHas('program', fn ($q) => $q->where('owner_id', $businessId));
-        }
-        if ($programId) {
-            $businessPartnerApprovalQuery->where('program_id', $programId);
-        }
+        if ($businessId) $businessPartnerApprovalQuery->whereHas('program', fn ($q) => $q->where('owner_id', $businessId));
+        if ($programId) $businessPartnerApprovalQuery->where('program_id', $programId);
         $pendingBusinessPartnerApprovals = $businessPartnerApprovalQuery->count();
 
-        // Registrations created without a verified email, business role or approval are recoverable from the admin Registration Center.
-        $incompleteRegistrations = User::query()
-            ->whereDoesntHave('roles', fn ($q) => $q->where('name', 'super_admin'))
+        // Only accounts explicitly created through the business registration flow belong here.
+        $incompleteBusinessRegistrations = User::query()
+            ->where('registration_type', 'business')
             ->where(function ($q) {
                 $q->whereNull('email_verified_at')
                     ->orWhereDoesntHave('roles', fn ($role) => $role->where('name', 'program_manager'))
@@ -63,7 +58,7 @@ class DashboardController extends Controller
             ->count();
 
         $pendingActions = [
-            ['label' => 'URGENT: Registration recovery', 'count' => $incompleteRegistrations, 'route' => 'admin.registrations.index'],
+            ['label' => 'URGENT: Business registration recovery', 'count' => $incompleteBusinessRegistrations, 'route' => 'admin.registrations.index'],
             ['label' => 'URGENT: Business partner approvals', 'count' => $pendingBusinessPartnerApprovals, 'route' => 'admin.partners.index'],
             ['label' => 'Business approvals', 'count' => $stats['pending_businesses'], 'route' => 'admin.businesses.index'], ['label' => 'Partner approvals', 'count' => $stats['pending_partners'], 'route' => 'admin.partners.index'],
             ['label' => 'Partner payouts', 'count' => Payout::whereIn('status', ['requested', 'pending'])->count(), 'route' => 'admin.payouts.index'], ['label' => 'Business payouts', 'count' => BusinessPayout::whereIn('status', ['requested', 'pending'])->count(), 'route' => 'admin.business-payouts.index'],
@@ -77,29 +72,7 @@ class DashboardController extends Controller
     public function realtimeSales(Request $request)
     {
         $limit = min(max((int) $request->input('limit', 10), 1), 25);
-
-        $orders = Order::query()
-            ->with(['customer', 'partner.user', 'program'])
-            ->whereIn('status', AdminAnalyticsService::PAID_STATUSES)
-            ->latest('paid_at')
-            ->latest('id')
-            ->limit($limit)
-            ->get();
-
-        return response()->json([
-            'data' => $orders->map(fn (Order $order) => [
-                'id' => $order->id,
-                'order_number' => $order->order_number,
-                'amount' => (float) $order->total,
-                'status' => $order->status,
-                'paid_at' => optional($order->paid_at)->toIso8601String(),
-                'customer' => $order->customer?->name ?? $order->customer?->email ?? 'Customer',
-                'customer_email' => $order->customer?->email,
-                'partner' => $order->partner?->user?->name,
-                'program' => $order->program?->name,
-                'url' => route('admin.orders.show', $order),
-            ])->values(),
-            'timestamp' => now()->toIso8601String(),
-        ]);
+        $orders = Order::query()->with(['customer', 'partner.user', 'program'])->whereIn('status', AdminAnalyticsService::PAID_STATUSES)->latest('paid_at')->latest('id')->limit($limit)->get();
+        return response()->json(['data' => $orders->map(fn (Order $order) => ['id' => $order->id, 'order_number' => $order->order_number, 'amount' => (float) $order->total, 'status' => $order->status, 'paid_at' => optional($order->paid_at)->toIso8601String(), 'customer' => $order->customer?->name ?? $order->customer?->email ?? 'Customer', 'customer_email' => $order->customer?->email, 'partner' => $order->partner?->user?->name, 'program' => $order->program?->name, 'url' => route('admin.orders.show', $order)])->values(), 'timestamp' => now()->toIso8601String()]);
     }
 }
