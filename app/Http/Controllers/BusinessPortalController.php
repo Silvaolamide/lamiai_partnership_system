@@ -101,7 +101,7 @@ class BusinessPortalController extends Controller
 
     public function createProduct(): View
     {
-        return view('business.products.create');
+        return view('business.products.create', ['landingPages' => config('landing_pages', [])]);
     }
 
     public function storeProduct(Request $request)
@@ -111,11 +111,15 @@ class BusinessPortalController extends Controller
             'sku' => ['nullable', 'string', 'max:255', 'unique:products,sku'],
             'price' => ['required', 'numeric', 'min:0'], 'currency' => ['required', 'string', 'max:10'],
             'status' => ['required', 'in:draft,active,inactive'],
+            'landing_page' => ['nullable', 'string', 'in:'.implode(',', array_keys(config('landing_pages', [])))],
         ]);
         $base = Str::slug($data['name']);
         $slug = $base; $i = 1;
         while (Product::where('slug', $slug)->exists()) $slug = $base.'-'.(++$i);
         $data['slug'] = $slug; $data['owner_id'] = $this->owner($request);
+        $landingPage = $data['landing_page'] ?? 'classic';
+        unset($data['landing_page']);
+        $data['metadata'] = ['landing_page' => $landingPage];
         Product::create($data);
         return redirect()->route('business.products.index')->with('success', 'Product created successfully.');
     }
@@ -123,7 +127,11 @@ class BusinessPortalController extends Controller
     public function editProduct(Request $request, Product $product): View
     {
         $product = $this->product($request, $product)->load('partnershipPrograms');
-        return view('business.products.edit', compact('product'));
+        return view('business.products.edit', [
+            'product' => $product,
+            'landingPages' => config('landing_pages', []),
+            'selectedLandingPage' => data_get($product->metadata, 'landing_page', 'classic'),
+        ]);
     }
 
     public function updateProduct(Request $request, Product $product)
@@ -134,7 +142,12 @@ class BusinessPortalController extends Controller
             'sku' => ['nullable', 'string', 'max:255', 'unique:products,sku,'.$product->id],
             'price' => ['required', 'numeric', 'min:0'], 'currency' => ['required', 'string', 'max:10'],
             'status' => ['required', 'in:draft,active,inactive'],
+            'landing_page' => ['nullable', 'string', 'in:'.implode(',', array_keys(config('landing_pages', [])))],
         ]);
+        $metadata = is_array($product->metadata) ? $product->metadata : [];
+        $metadata['landing_page'] = $data['landing_page'] ?? 'classic';
+        unset($data['landing_page']);
+        $data['metadata'] = $metadata;
         $product->update($data);
         return redirect()->route('business.products.index')->with('success', 'Product updated successfully.');
     }
