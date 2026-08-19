@@ -35,6 +35,20 @@ class PartnerController extends Controller
         return back()->with('success', $partner->status === 'active' ? $partner->user->name . ' has been fully approved as a partner.' : $partner->user->name . ' has received super admin approval and is awaiting the remaining requirement(s).');
     }
 
+    public function approveForBusiness(ProgramPartner $partner, PartnerApprovalService $approvalService)
+    {
+        if ($partner->status === 'rejected') return back()->with('error', 'This application has been rejected and cannot be approved.');
+
+        if (!$approvalService->businessApprovalRequired($partner->program)) {
+            return back()->with('error', 'Business approval is not required for this program.');
+        }
+
+        $partner = $approvalService->approveByBusiness($partner);
+        return back()->with('success', $partner->status === 'active'
+            ? $partner->user->name . ' has been fully approved as a partner.'
+            : $partner->user->name . ' has received business approval and is awaiting the remaining requirement(s).');
+    }
+
     public function reject(ProgramPartner $partner)
     {
         if ($partner->status !== 'pending') return back()->with('error', 'This application has already been processed.');
