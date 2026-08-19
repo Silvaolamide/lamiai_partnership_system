@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#070b1d">
+    <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
+    <link rel="alternate icon" href="{{ asset('favicon.svg') }}">
     <title>Partner Dashboard · AIPM</title>
     @vite(['resources/css/app.css','resources/js/app.js'])
 </head>
@@ -38,62 +41,38 @@
             @if($programStats->isNotEmpty())
                 @php $firstPartner = $programStats->first()['partner']; @endphp
                 <div class="mt-6 flex flex-col gap-3 sm:flex-row">
-                    <a href="{{ route('partner.storefront', ['partnerCode' => $firstPartner->partner_code]) }}" class="rounded-xl bg-emerald-500 px-5 py-3 text-sm font-black text-slate-950 hover:bg-emerald-400">View my storefront →</a>
-                    <button type="button" onclick="navigator.clipboard?.writeText('{{ route('partner.storefront', ['partnerCode' => $firstPartner->partner_code]) }}'); this.textContent='Copied!'" class="rounded-xl border border-white/15 bg-white/5 px-5 py-3 text-sm font-bold hover:bg-white/10">Copy storefront link</button>
+                    <a href="{{ route('partner.storefront', ['partnerCode' => $firstPartner->partner_code]) }}" class="rounded-xl bg-emerald-400 px-5 py-3 text-center text-sm font-black text-slate-950">View My Store</a>
+                    <button type="button" onclick="navigator.clipboard.writeText('{{ route('partner.storefront', ['partnerCode' => $firstPartner->partner_code]) }}'); this.innerText='Copied!';" class="rounded-xl border border-white/20 px-5 py-3 text-center text-sm font-bold text-white">Copy Store Link</button>
                 </div>
             @endif
         </div>
         <div class="rounded-3xl border border-slate-200 bg-white p-7 shadow-sm">
             <p class="text-xs font-black uppercase tracking-[0.18em] text-violet-600">Quick actions</p>
-            <div class="mt-5 space-y-3">
-                <a href="#programs" class="block rounded-2xl bg-slate-50 p-4 font-bold hover:bg-violet-50">View my programs <span class="float-right">→</span></a>
-                <a href="{{ route('partner.marketplace.index') }}" class="block rounded-2xl bg-slate-50 p-4 font-bold hover:bg-violet-50">Find more programs <span class="float-right">→</span></a>
-                <a href="{{ route('profile.edit') }}" class="block rounded-2xl bg-slate-50 p-4 font-bold hover:bg-violet-50">Update profile <span class="float-right">→</span></a>
+            <div class="mt-5 grid gap-3">
+                <a href="{{ route('partner.storefront', ['partnerCode' => optional($programStats->first()['partner'] ?? null)->partner_code]) }}" class="rounded-xl border border-slate-200 px-4 py-3 font-bold hover:bg-slate-50">Open Storefront</a>
+                <a href="{{ route('network.index') }}" class="rounded-xl border border-slate-200 px-4 py-3 font-bold hover:bg-slate-50">Manage Network</a>
+                <a href="{{ route('partner.payouts.index') }}" class="rounded-xl border border-slate-200 px-4 py-3 font-bold hover:bg-slate-50">View Payouts</a>
             </div>
         </div>
     </section>
 
-    <section id="programs" class="space-y-6">
-        @forelse($programStats as $programStat)
-            @php
-                $program = $programStat['program'];
-                $partner = $programStat['partner'];
-                $rules = $program->commissionRules->where('status', true)->where('event', 'sale');
-                $level1Rule = $rules->where('level', 1)->sortByDesc('priority')->first();
-                $level2Rule = $rules->where('level', 2)->sortByDesc('priority')->first();
-                $storefrontUrl = route('partner.storefront', ['partnerCode' => $partner->partner_code]);
-            @endphp
-            <section class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-                <div class="border-b border-slate-100 p-6 sm:p-7">
-                    <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                        <div><p class="text-xs font-black uppercase tracking-[0.18em] text-violet-600">Partnership Program</p><h2 class="mt-1 text-2xl font-black">{{ $program->name }}</h2><p class="mt-2 text-sm text-slate-500">Partner code: <span class="font-mono font-bold">{{ $partner->partner_code }}</span></p></div>
-                        <a href="{{ $storefrontUrl }}" class="rounded-xl bg-slate-950 px-5 py-3 text-sm font-black text-white">Open public storefront →</a>
-                    </div>
-                </div>
-                <div class="grid gap-6 p-6 sm:p-7 lg:grid-cols-[.8fr_1.2fr]">
-                    <div class="grid grid-cols-2 gap-3">
-                        <div class="rounded-2xl bg-slate-50 p-4"><p class="text-xs text-slate-500">Sales</p><p class="mt-1 text-2xl font-black">₦{{ number_format($programStat['paid_sales_amount'],2) }}</p></div>
-                        <div class="rounded-2xl bg-emerald-50 p-4"><p class="text-xs text-emerald-700">Commission</p><p class="mt-1 text-2xl font-black text-emerald-700">₦{{ number_format($programStat['total_commissions'],2) }}</p></div>
-                        <div class="rounded-2xl bg-violet-50 p-4"><p class="text-xs text-violet-700">Recruited</p><p class="mt-1 text-2xl font-black text-violet-950">{{ $programStat['recruited_partners_count'] }}</p></div>
-                        <div class="rounded-2xl bg-blue-50 p-4"><p class="text-xs text-blue-700">Your rate</p><p class="mt-1 text-2xl font-black text-blue-950">{{ $level1Rule ? ($level1Rule->commission_type === 'percentage' ? number_format((float)$level1Rule->value,2).'%' : '₦'.number_format((float)$level1Rule->value,2)) : '—' }}</p></div>
-                    </div>
-                    <div>
-                        <div class="flex items-center justify-between"><h3 class="text-lg font-black">Products you can promote</h3><a href="{{ $storefrontUrl }}#products" class="text-sm font-bold text-violet-600">See all on storefront →</a></div>
-                        @if($program->products->isNotEmpty())
-                            <div class="mt-4 grid gap-3 sm:grid-cols-2">
-                                @foreach($program->products->take(6) as $product)
-                                    <a href="{{ route('product.show', ['slug' => $product->slug, 'ref' => $partner->partner_code]) }}" class="group rounded-2xl border border-slate-200 p-4 hover:border-violet-300 hover:shadow-sm"><div class="flex items-center justify-between gap-3"><div><p class="font-bold group-hover:text-violet-700">{{ $product->name }}</p><p class="mt-1 text-xs text-slate-500">{{ $product->currency ?? 'NGN' }} {{ number_format((float)$product->price,2) }}</p></div><span class="text-violet-600">→</span></div></a>
-                                @endforeach
-                            </div>
-                        @else
-                            <p class="mt-4 rounded-2xl bg-slate-50 p-5 text-sm text-slate-500">No active products are currently attached to this program.</p>
-                        @endif
-                    </div>
-                </div>
-            </section>
-        @empty
-            <div class="rounded-3xl border border-dashed border-slate-300 bg-white p-12 text-center"><h2 class="text-2xl font-black">You haven't joined a program yet.</h2><p class="mt-2 text-slate-600">Browse available programs and choose the ones you want to promote.</p><a href="{{ route('partner.marketplace.index') }}" class="mt-6 inline-flex rounded-xl bg-violet-600 px-5 py-3 font-bold text-white">Browse programs →</a></div>
-        @endforelse
+    <section class="mb-8 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div><p class="text-xs font-black uppercase tracking-[0.18em] text-violet-600">Programs</p><h2 class="mt-1 text-2xl font-black">Your performance</h2></div>
+            <p class="text-sm text-slate-500">Completed sales and commissions</p>
+        </div>
+        <div class="mt-5 overflow-x-auto">
+            <table class="min-w-full text-left text-sm">
+                <thead><tr class="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500"><th class="px-3 py-3">Program</th><th class="px-3 py-3">Sales</th><th class="px-3 py-3">Revenue</th><th class="px-3 py-3">Commission</th></tr></thead>
+                <tbody>
+                @forelse($programStats as $stat)
+                    <tr class="border-b border-slate-100"><td class="px-3 py-4 font-bold">{{ $stat['program']->name }}</td><td class="px-3 py-4">{{ $stat['sales'] }}</td><td class="px-3 py-4">₦{{ number_format($stat['sales_amount'],2) }}</td><td class="px-3 py-4">₦{{ number_format($stat['commission'],2) }}</td></tr>
+                @empty
+                    <tr><td colspan="4" class="px-3 py-8 text-center text-slate-500">No program activity yet.</td></tr>
+                @endforelse
+                </tbody>
+            </table>
+        </div>
     </section>
 </div>
 </body>
