@@ -17,43 +17,27 @@ class RegistrationController extends Controller
 {
     public function index()
     {
-        // Registration recovery is specifically for business registrations.
-        // Customers should never appear here simply because they have not been
-        // verified/approved as a business.
-        $users = User::query()
-            ->whereDoesntHave('roles', fn ($query) => $query->where('name', 'super_admin'))
-            ->where(function ($query) {
-                $query->whereHas('roles', fn ($roleQuery) => $roleQuery->where('name', 'program_manager'))
-                    ->orWhereNotNull('business_name')
-                    ->orWhereNotNull('business_website')
-                    ->orWhereNotNull('business_industry')
-                    ->orWhereNotNull('business_phone')
-                    ->orWhereNotNull('business_super_admin_approved_at')
-                    ->orWhereNotNull('business_rejected_at');
-            })
-            ->latest()
-            ->paginate(25);
-
+        $users = User::query()->where('registration_type', 'business')->latest()->paginate(25);
         return view('admin.registrations.index', compact('users'));
     }
 
     public function verifyEmail(User $user): RedirectResponse
     {
-        abort_if($user->hasRole('super_admin'), 403);
+        $this->ensureBusinessRegistration($user);
         if (! $user->email_verified_at) $user->forceFill(['email_verified_at' => now()])->save();
         return back()->with('success', "Email verified for {$user->email}.");
     }
 
     public function assignBusinessRole(User $user): RedirectResponse
     {
-        abort_if($user->hasRole('super_admin'), 403);
+        $this->ensureBusinessRegistration($user);
         if (! $user->hasRole('program_manager')) $user->assignRole('program_manager');
         return back()->with('success', "Business role restored for {$user->email}.");
     }
 
     public function approveBusiness(User $user): RedirectResponse
     {
-        abort_if($user->hasRole('super_admin'), 403);
+        $this->ensureBusinessRegistration($user);
         if (! $user->hasRole('program_manager')) $user->assignRole('program_manager');
         $user->forceFill(['business_super_admin_approved_at' => now(), 'business_rejected_at' => null])->save();
         $name = $user->business_name ?: $user->name;
@@ -62,7 +46,7 @@ class RegistrationController extends Controller
 
     public function rejectBusiness(User $user): RedirectResponse
     {
-        abort_if($user->hasRole('super_admin'), 403);
+        $this->ensureBusinessRegistration($user);
         if (! $user->hasRole('program_manager')) $user->assignRole('program_manager');
         $user->forceFill(['business_super_admin_approved_at' => null, 'business_rejected_at' => now()])->save();
         $name = $user->business_name ?: $user->name;
@@ -71,7 +55,7 @@ class RegistrationController extends Controller
 
     public function resendVerification(User $user): RedirectResponse
     {
-        abort_if($user->hasRole('super_admin'), 403);
+        $this->ensureBusinessRegistration($user);
         if ($user->email_verified_at) return back()->with('success', "{$user->email} is already verified.");
         $user->sendEmailVerificationNotification();
         return back()->with('success', "A new verification email was sent to {$user->email}.");
@@ -79,7 +63,7 @@ class RegistrationController extends Controller
 
     public function repair(User $user): RedirectResponse
     {
-        abort_if($user->hasRole('super_admin'), 403);
+        $this->ensureBusinessRegistration($user);
         if (! $user->hasRole('program_manager')) $user->assignRole('program_manager');
         $user->forceFill([
             'email_verified_at' => $user->email_verified_at ?: now(),
@@ -89,10 +73,9 @@ class RegistrationController extends Controller
         return back()->with('success', "Registration repaired for {$user->email}: business role, email verification and approval are complete.");
     }
 
-    /** Delete only a non-admin registration that has no associated platform activity. */
     public function destroy(User $user): RedirectResponse
     {
-        abort_if($user->hasRole('super_admin'), 403);
+        $this->ensureBusinessRegistration($user);
         $activity = $this->registrationActivity($user);
         if ($activity['total'] > 0) {
             return back()->with('error', "{$user->email} cannot be deleted because it has associated activity ({$activity['summary']}). Resolve or archive that activity first.");
@@ -102,7 +85,13 @@ class RegistrationController extends Controller
             $user->permissions()->detach();
             $user->delete();
         });
-        return back()->with('success', "Incomplete registration for {$user->email} was permanently deleted.");
+        return back()->with('success', "Incomplete business registration for {$user->email} was permanently deleted.");
+    }
+
+    private function ensureBusinessRegistration(User $user): void
+    {
+        abort_unless($user->registration_type === 'business', 404);
+        abort_if($user->hasRole('super_admin'), 403);
     }
 
     private function registrationActivity(User $user): array
@@ -115,12 +104,8 @@ class RegistrationController extends Controller
             'payment submissions' => fn () => PaymentSubmission::whereHas('order', fn ($query) => $query->where('customer_id', $user->id))->exists(),
             'payment disputes' => fn () => PaymentDispute::where('customer_id', $user->id)->exists(),
         ];
-
         $found = [];
-        foreach ($checks as $label => $check) {
-            if ($check()) $found[] = $label;
-        }
-
+        foreach ($checks as $label => $check) if ($check()) $found[] = $label;
         return ['total' => count($found), 'summary' => implode(', ', $found)];
     }
 }
