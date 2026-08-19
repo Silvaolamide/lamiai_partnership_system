@@ -25,6 +25,7 @@ use App\Http\Controllers\NetworkController;
 use App\Http\Controllers\PartnerController;
 use App\Http\Controllers\PartnerDashboardController;
 use App\Http\Controllers\PartnerMarketplaceController;
+use App\Http\Controllers\PartnerReferralShowcaseController;
 use App\Http\Controllers\PartnershipProgramController;
 use App\Http\Controllers\PaymentDisputeController;
 use App\Http\Controllers\PayoutController;
@@ -96,6 +97,7 @@ Route::middleware(['auth', 'role:super_admin'])->prefix('admin')->group(function
     Route::get('/payouts', [AdminPayoutController::class, 'index'])->name('admin.payouts.index'); Route::get('/payouts/{payout}', [AdminPayoutController::class, 'show'])->name('admin.payouts.show'); Route::patch('/payouts/{payout}/approve', [AdminPayoutController::class, 'approve'])->name('admin.payouts.approve'); Route::patch('/payouts/{payout}/reject', [AdminPayoutController::class, 'reject'])->name('admin.payouts.reject'); Route::patch('/payouts/{payout}/process', [AdminPayoutController::class, 'process'])->name('admin.payouts.process'); Route::get('/business-payouts', [AdminBusinessPayoutController::class, 'index'])->name('admin.business-payouts.index'); Route::get('/business-payouts/{businessPayout}', [AdminBusinessPayoutController::class, 'show'])->name('admin.business-payouts.show'); Route::patch('/business-payouts/{businessPayout}/approve', [AdminBusinessPayoutController::class, 'approve'])->name('admin.business-payouts.approve'); Route::patch('/business-payouts/{businessPayout}/reject', [AdminBusinessPayoutController::class, 'reject'])->name('admin.business-payouts.reject'); Route::patch('/business-payouts/{businessPayout}/process', [AdminBusinessPayoutController::class, 'process'])->name('admin.business-payouts.process');
 });
 Route::get('/partner/apply', [PartnerController::class, 'create'])->name('partner.apply'); Route::post('/partner/apply', [PartnerController::class, 'store'])->name('partner.apply.store');
+Route::get('/partner/store/{partnerCode}', [PartnerReferralShowcaseController::class, 'show'])->name('partner.storefront');
 Route::get('/', function(){ $programs=PartnershipProgram::query()->where('status','active')->with(['commissionRules'=>fn($query)=>$query->where('status',true)->orderBy('priority')->orderBy('level')])->latest()->limit(6)->get(); return view('home',compact('programs')); })->name('home');
 Route::get('/dashboard', function(){ $user=request()->user(); if($user->hasRole('super_admin')) return redirect()->route('admin'); if($user->hasRole('program_manager')) return redirect()->route('business.dashboard'); if($user->hasRole('partner')) return redirect()->route('partner.dashboard'); if($user->hasRole('customer')) return redirect()->route('customer.dashboard'); return redirect()->route('home'); })->middleware(['auth','verified'])->name('dashboard');
 Route::middleware('auth')->group(function(){ Route::get('/profile',[ProfileController::class,'edit'])->name('profile.edit'); Route::patch('/profile',[ProfileController::class,'update'])->name('profile.update'); Route::delete('/profile',[ProfileController::class,'destroy'])->name('profile.destroy'); });
