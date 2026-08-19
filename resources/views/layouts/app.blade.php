@@ -18,6 +18,12 @@
 
             @if($isAdmin)
                 <main class="min-h-screen pt-[78px] transition-all duration-300 lg:ml-[264px]" :class="adminSidebarCollapsed ? 'lg:ml-[82px]' : 'lg:ml-[264px]'">
+                    @if(request()->routeIs('admin'))
+                        <x-dashboard-payment-alert
+                            :count="\App\Models\PaymentSubmission::where('status', 'pending')->count()"
+                            role="admin"
+                        />
+                    @endif
                     {{ $slot }}
                 </main>
             @else
