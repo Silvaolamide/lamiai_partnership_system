@@ -12,7 +12,7 @@
             : ($isPartner
                 ? "{$count} order" . ($count === 1 ? '' : 's') . " from your referrals have payment proof waiting for admin confirmation. Commission is only finalized after confirmation."
                 : "{$count} order" . ($count === 1 ? '' : 's') . " from your business have payment proof waiting for admin confirmation. These are not yet completed sales.");
-        $url = $isAdmin ? route('admin.payments.index') : ($isPartner ? route('partner.dashboard') : route('business.sales.index'));
+        $url = $isAdmin ? route('admin.payments.index') : ($isPartner ? route('partner.dashboard').'#programs' : route('business.sales.index'));
         $button = $isAdmin ? 'Review payments' : ($isPartner ? 'View referral activity' : 'View sales');
     @endphp
 
