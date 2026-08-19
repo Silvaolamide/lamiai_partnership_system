@@ -38,7 +38,22 @@ class DashboardController extends Controller
             $paid = Order::whereIn('program_id', $programIds)->whereIn('status', AdminAnalyticsService::PAID_STATUSES)->when($from, fn ($q) => $q->where('created_at', '>=', $from))->when($to, fn ($q) => $q->where('created_at', '<=', $to));
             $business->dashboard_metrics = ['programs' => $programIds->count(), 'partners' => ProgramPartner::whereIn('program_id', $programIds)->count(), 'orders' => (clone $paid)->count(), 'sales' => (float) (clone $paid)->sum('total')]; return $business;
         });
+
+        // This is the urgent queue for partner applications where a business must make the approval decision.
+        $businessPartnerApprovalQuery = ProgramPartner::query()
+            ->where('status', 'pending')
+            ->whereNull('business_approved_at')
+            ->whereHas('program', fn ($q) => $q->where('settings->partner_business_approval_required', true));
+        if ($businessId) {
+            $businessPartnerApprovalQuery->whereHas('program', fn ($q) => $q->where('owner_id', $businessId));
+        }
+        if ($programId) {
+            $businessPartnerApprovalQuery->where('program_id', $programId);
+        }
+        $pendingBusinessPartnerApprovals = $businessPartnerApprovalQuery->count();
+
         $pendingActions = [
+            ['label' => 'URGENT: Business partner approvals', 'count' => $pendingBusinessPartnerApprovals, 'route' => 'admin.partners.index'],
             ['label' => 'Business approvals', 'count' => $stats['pending_businesses'], 'route' => 'admin.businesses.index'], ['label' => 'Partner approvals', 'count' => $stats['pending_partners'], 'route' => 'admin.partners.index'],
             ['label' => 'Partner payouts', 'count' => Payout::whereIn('status', ['requested', 'pending'])->count(), 'route' => 'admin.payouts.index'], ['label' => 'Business payouts', 'count' => BusinessPayout::whereIn('status', ['requested', 'pending'])->count(), 'route' => 'admin.business-payouts.index'],
         ];
