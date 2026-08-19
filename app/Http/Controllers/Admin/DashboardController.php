@@ -47,4 +47,38 @@ class DashboardController extends Controller
         $programOptions = PartnershipProgram::when($businessId, fn ($q) => $q->where('owner_id', $businessId))->orderBy('name')->get(['id','name','owner_id']);
         return view('admin.dashboard', compact('stats', 'recentOrders', 'topPartners', 'programs', 'businesses', 'pendingActions', 'series', 'from', 'to', 'businessOptions', 'programOptions', 'businessId', 'programId'));
     }
+
+    /**
+     * Return recent paid sales for the dashboard's live activity stream.
+     * The endpoint intentionally returns only the small amount of information
+     * needed by the admin UI and is protected by the parent super-admin route.
+     */
+    public function realtimeSales(Request $request)
+    {
+        $limit = min(max((int) $request->input('limit', 10), 1), 25);
+
+        $orders = Order::query()
+            ->with(['customer', 'partner.user', 'program'])
+            ->whereIn('status', AdminAnalyticsService::PAID_STATUSES)
+            ->latest('paid_at')
+            ->latest('id')
+            ->limit($limit)
+            ->get();
+
+        return response()->json([
+            'data' => $orders->map(fn (Order $order) => [
+                'id' => $order->id,
+                'order_number' => $order->order_number,
+                'amount' => (float) $order->total,
+                'status' => $order->status,
+                'paid_at' => optional($order->paid_at)->toIso8601String(),
+                'customer' => $order->customer?->name ?? $order->customer?->email ?? 'Customer',
+                'customer_email' => $order->customer?->email,
+                'partner' => $order->partner?->user?->name,
+                'program' => $order->program?->name,
+                'url' => route('admin.orders.show', $order),
+            ])->values(),
+            'timestamp' => now()->toIso8601String(),
+        ]);
+    }
 }
