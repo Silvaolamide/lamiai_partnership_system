@@ -24,8 +24,18 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasMany(Order::class, 'customer_id');
     }
 
+    public function isBusinessRegistration(): bool
+    {
+        return $this->registration_type === 'business';
+    }
+
+    public function isCustomerRegistration(): bool
+    {
+        return $this->registration_type === 'customer';
+    }
+
     protected $fillable = [
-        'name', 'email', 'password', 'email_verified_at', 'business_name', 'business_website',
+        'name', 'email', 'password', 'registration_type', 'email_verified_at', 'business_name', 'business_website',
         'business_industry', 'business_phone', 'business_super_admin_approved_at',
         'business_rejected_at',
     ];
