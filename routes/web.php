@@ -10,6 +10,7 @@ use App\Http\Controllers\Admin\OrderController;
 use App\Http\Controllers\Admin\PartnerController as AdminPartnerController;
 use App\Http\Controllers\Admin\PayoutController as AdminPayoutController;
 use App\Http\Controllers\Admin\PaymentController as AdminPaymentController;
+use App\Http\Controllers\Admin\PaymentDisputeController as AdminPaymentDisputeController;
 use App\Http\Controllers\Admin\SettingsController as AdminSettingsController;
 use App\Http\Controllers\BusinessDashboardController;
 use App\Http\Controllers\BusinessOnboardingController;
@@ -74,6 +75,7 @@ Route::middleware(['auth', 'role:super_admin'])->prefix('admin')->group(function
     Route::get('/analytics/{metric}', [AnalyticsController::class, 'show'])->name('admin.analytics.show');
     Route::get('/settings', [AdminSettingsController::class, 'edit'])->name('admin.settings'); Route::put('/settings', [AdminSettingsController::class, 'update'])->name('admin.settings.update');
     Route::get('/payments', [AdminPaymentController::class, 'index'])->name('admin.payments.index'); Route::get('/payments/{payment}', [AdminPaymentController::class, 'show'])->name('admin.payments.show'); Route::patch('/payments/{payment}/confirm', [AdminPaymentController::class, 'confirm'])->name('admin.payments.confirm'); Route::patch('/payments/{payment}/reject', [AdminPaymentController::class, 'reject'])->name('admin.payments.reject');
+    Route::get('/payment-disputes', [AdminPaymentDisputeController::class, 'index'])->name('admin.payment-disputes.index'); Route::patch('/payment-disputes/{dispute}/resolve', [AdminPaymentDisputeController::class, 'resolve'])->name('admin.payment-disputes.resolve');
     Route::get('/businesses', [AdminBusinessController::class, 'index'])->name('admin.businesses.index'); Route::patch('/businesses/{business}/approve', [AdminBusinessController::class, 'approve'])->name('admin.businesses.approve'); Route::patch('/businesses/{business}/reject', [AdminBusinessController::class, 'reject'])->name('admin.businesses.reject');
     Route::get('/partners', [AdminPartnerController::class, 'index'])->name('admin.partners.index'); Route::patch('/partners/{partner}/approve', [AdminPartnerController::class, 'approve'])->name('admin.partners.approve'); Route::patch('/partners/{partner}/reject', [AdminPartnerController::class, 'reject'])->name('admin.partners.reject');
     Route::get('/programs', [PartnershipProgramController::class, 'index'])->name('admin.programs.index'); Route::get('/programs/create', [PartnershipProgramController::class, 'create'])->name('admin.programs.create'); Route::post('/programs', [PartnershipProgramController::class, 'store'])->name('admin.programs.store'); Route::get('/programs/{program}/edit', [PartnershipProgramController::class, 'edit'])->name('admin.programs.edit'); Route::put('/programs/{program}', [PartnershipProgramController::class, 'update'])->name('admin.programs.update');
