@@ -8,6 +8,7 @@ use App\Models\Order;
 use App\Models\PartnershipProgram;
 use App\Models\Product;
 use App\Models\ProgramPartner;
+use App\Models\PaymentSubmission;
 use App\Models\PlatformSetting;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -35,19 +36,21 @@ class BusinessDashboardController extends Controller
         $businessPaid = (float)BusinessPayout::where('business_id',$ownerId)->whereIn('status',['processed','paid'])->sum('amount');
         $businessRequested = (float)BusinessPayout::where('business_id',$ownerId)->whereIn('status',['requested','approved','processing'])->sum('amount');
 
-        // Only partners in this business's programs and awaiting the business decision are actionable here.
         $pendingPartnerApprovals = ProgramPartner::whereIn('program_id', $programIds)
             ->where('status', 'pending')
             ->whereHas('program', fn ($query) => $query->where('owner_id', $ownerId)->where('settings->partner_business_approval_required', true))
             ->whereNull('business_approved_at')
             ->count();
 
+        $pendingPaymentConfirmations = PaymentSubmission::query()
+            ->where('status', 'pending')
+            ->whereHas('order', fn ($query) => $query->whereIn('program_id', $programIds))
+            ->count();
+
         $topAffiliates = $commissions->whereNotIn('status',['reversed','cancelled'])->groupBy('partner_id')->map(function($rows){ $first=$rows->first(); return ['partner'=>$first?->partner,'sales'=>$rows->pluck('order_id')->filter()->unique()->count(),'revenue'=>(float)$rows->sum(fn($c)=>(float)$c->base_amount),'commission'=>(float)$rows->sum(fn($c)=>(float)$c->commission_amount)]; })->sortByDesc('revenue')->take(5)->values();
         $recentOrders = $orders->take(8);
         $recentCommissions = $commissions->take(8);
 
-        // A business activity feed is derived from persisted sales and partner genealogy,
-        // so it remains useful even for events that happened before this feature was enabled.
         $recruitedPartners = ProgramPartner::whereIn('program_id',$programIds)->with(['user','program','parentPartner.user'])->latest('created_at')->take(8)->get();
         $activities = collect();
         foreach ($recentOrders as $order) {
@@ -72,6 +75,7 @@ class BusinessDashboardController extends Controller
             'business_requested'=>$businessRequested,
             'payout_delay_days'=>$delayDays,
             'pending_partner_approvals'=>$pendingPartnerApprovals,
+            'pending_payment_confirmations'=>$pendingPaymentConfirmations,
             'net_revenue'=>max(0,$grossRevenue-$commissionTotal),
         ];
 
