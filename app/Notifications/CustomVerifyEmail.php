@@ -12,11 +12,12 @@ class CustomVerifyEmail extends VerifyEmail
         return (new MailMessage)
             ->subject('Verify your email address — AIPM')
             ->greeting('Hello ' . ($notifiable->name ?? 'there') . ',')
-            ->line('Welcome to AIPM — AI Powered Marketing.')
+            ->line('Welcome to AI Powered Marketing (AIPM).')
             ->line('To complete your account setup and secure your account, please verify your email address by clicking the button below.')
             ->action('Verify My Email Address', $this->verificationUrl($notifiable))
+            ->line('Can’t find this email? Please check your Spam, Junk or Promotions folder and mark AIPM as a trusted sender.')
             ->line('This verification link will expire for security reasons.')
-            ->line('If you did not create an account with AIPM, you can safely ignore this email.')
-            ->salutation("Regards,\nAIPM — AI Powered Marketing");
+            ->line('If you did not create an account with AI Powered Marketing (AIPM), you can safely ignore this email.')
+            ->salutation("Regards,\nAI Powered Marketing (AIPM)");
     }
 }
