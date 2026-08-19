@@ -17,11 +17,7 @@ class RegistrationController extends Controller
 {
     public function index()
     {
-        $users = User::query()
-            ->whereDoesntHave('roles', fn ($query) => $query->where('name', 'super_admin'))
-            ->latest()
-            ->paginate(25);
-
+        $users = User::query()->whereDoesntHave('roles', fn ($query) => $query->where('name', 'super_admin'))->latest()->paginate(25);
         return view('admin.registrations.index', compact('users'));
     }
 
@@ -77,22 +73,19 @@ class RegistrationController extends Controller
         return back()->with('success', "Registration repaired for {$user->email}: business role, email verification and approval are complete.");
     }
 
-    /** Delete an incomplete registration only when it has no meaningful activity. */
+    /** Delete only a non-admin registration that has no associated platform activity. */
     public function destroy(User $user): RedirectResponse
     {
         abort_if($user->hasRole('super_admin'), 403);
-
         $activity = $this->registrationActivity($user);
         if ($activity['total'] > 0) {
             return back()->with('error', "{$user->email} cannot be deleted because it has associated activity ({$activity['summary']}). Resolve or archive that activity first.");
         }
-
         DB::transaction(function () use ($user) {
             $user->roles()->detach();
             $user->permissions()->detach();
             $user->delete();
         });
-
         return back()->with('success', "Incomplete registration for {$user->email} was permanently deleted.");
     }
 
@@ -103,9 +96,8 @@ class RegistrationController extends Controller
             'partners' => fn () => ProgramPartner::where('user_id', $user->id)->exists(),
             'payouts' => fn () => Payout::where('partner_id', $user->id)->exists(),
             'business payouts' => fn () => BusinessPayout::where('business_id', $user->id)->exists(),
-            // Payment submissions belong to orders; there is no submitted_by column.
             'payment submissions' => fn () => PaymentSubmission::whereHas('order', fn ($query) => $query->where('customer_id', $user->id))->exists(),
-            'payment disputes' => fn () => PaymentDispute::where('user_id', $user->id)->exists(),
+            'payment disputes' => fn () => PaymentDispute::where('customer_id', $user->id)->exists(),
         ];
 
         $found = [];
