@@ -8,6 +8,7 @@ use App\Models\Order;
 use App\Models\PartnershipProgram;
 use App\Models\ProgramPartner;
 use App\Models\Payout;
+use App\Models\PaymentSubmission;
 use App\Models\User;
 use App\Services\AdminAnalyticsService;
 use Illuminate\Http\Request;
@@ -47,6 +48,15 @@ class DashboardController extends Controller
         if ($programId) $businessPartnerApprovalQuery->where('program_id', $programId);
         $pendingBusinessPartnerApprovals = $businessPartnerApprovalQuery->count();
 
+        $pendingPaymentConfirmationQuery = PaymentSubmission::query()->where('status', 'pending');
+        if ($businessId || $programId) {
+            $pendingPaymentConfirmationQuery->whereHas('order', function ($q) use ($businessId, $programId) {
+                if ($programId) $q->where('program_id', $programId);
+                if ($businessId) $q->whereHas('program', fn ($program) => $program->where('owner_id', $businessId));
+            });
+        }
+        $pendingPaymentConfirmations = $pendingPaymentConfirmationQuery->count();
+
         // Only accounts explicitly created through the business registration flow belong here.
         $incompleteBusinessRegistrations = User::query()
             ->where('registration_type', 'business')
@@ -58,6 +68,7 @@ class DashboardController extends Controller
             ->count();
 
         $pendingActions = [
+            ['label' => 'URGENT: Payments awaiting confirmation', 'count' => $pendingPaymentConfirmations, 'route' => 'admin.payments.index'],
             ['label' => 'URGENT: Business registration recovery', 'count' => $incompleteBusinessRegistrations, 'route' => 'admin.registrations.index'],
             ['label' => 'URGENT: Business partner approvals', 'count' => $pendingBusinessPartnerApprovals, 'route' => 'admin.partners.index'],
             ['label' => 'Business approvals', 'count' => $stats['pending_businesses'], 'route' => 'admin.businesses.index'], ['label' => 'Partner approvals', 'count' => $stats['pending_partners'], 'route' => 'admin.partners.index'],
