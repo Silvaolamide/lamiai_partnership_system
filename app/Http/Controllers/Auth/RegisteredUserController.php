@@ -20,15 +20,13 @@ class RegisteredUserController extends Controller
         return view('auth.register');
     }
 
-    /**
-     * @throws ValidationException
-     */
+    /** @throws ValidationException */
     public function store(Request $request): RedirectResponse
     {
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
-            'password' => ['required', 'confirmed', Rules\Password::defaults()],
+            'password' => ['required', 'confirmed', Rules\Password::min(8)->mixedCase()->numbers()->symbols()],
         ]);
 
         $isBusinessRegistration = $request->session()->pull('business_onboarding_intent', false) === true;
@@ -42,7 +40,6 @@ class RegisteredUserController extends Controller
         ]);
 
         $user->assignRole($isBusinessRegistration ? 'program_manager' : 'customer');
-
         event(new Registered($user));
         Auth::login($user);
 
