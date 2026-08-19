@@ -61,6 +61,7 @@ class PartnerController extends Controller
             $user = User::create([
                 'name' => $validated['name'],
                 'email' => $validated['email'],
+                'registration_type' => 'partner',
                 'password' => Hash::make($validated['password']),
             ]);
 
