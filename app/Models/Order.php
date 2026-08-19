@@ -20,6 +20,7 @@ class Order extends Model
         'total',
         'currency',
         'status',
+        'payment_method',
         'payment_provider',
         'payment_reference',
         'paid_at',
@@ -62,5 +63,15 @@ class Order extends Model
     public function commissions()
     {
         return $this->hasMany(Commission::class);
+    }
+
+    public function paymentSubmissions()
+    {
+        return $this->hasMany(PaymentSubmission::class);
+    }
+
+    public function latestPaymentSubmission()
+    {
+        return $this->hasOne(PaymentSubmission::class)->latestOfMany();
     }
 }
