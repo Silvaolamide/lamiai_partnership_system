@@ -113,11 +113,6 @@ class CheckoutController extends Controller
         return view('checkout.show', compact('order'));
     }
 
-    /**
-     * Initialize a real Paystack transaction. Guests provide their contact
-     * details here; authentication is intentionally deferred until payment
-     * has succeeded.
-     */
     public function paystack(Request $request, $orderId)
     {
         $order = Order::with('customer')->findOrFail($orderId);
@@ -281,6 +276,7 @@ class CheckoutController extends Controller
                 ->with('warning', 'Payment was recorded, but commission processing needs administrator attention.');
         }
 
+        $this->ensureCustomerRole($order);
         $this->referralService->clearReferral();
 
         return $this->postPaymentRedirect($request, $order);
@@ -295,6 +291,7 @@ class CheckoutController extends Controller
         }
 
         if (Auth::check() && $order->customer_id === Auth::id()) {
+            $this->ensureCustomerRole($order);
             return redirect()->route('customer.dashboard');
         }
 
@@ -307,6 +304,7 @@ class CheckoutController extends Controller
     private function postPaymentRedirect(Request $request, Order $order)
     {
         if (Auth::check() && $order->customer_id === Auth::id()) {
+            $this->ensureCustomerRole($order);
             return redirect()->route('customer.dashboard');
         }
 
@@ -319,6 +317,7 @@ class CheckoutController extends Controller
     private function completePaystackOrder(Order $order, array $data): void
     {
         if ($order->status === 'paid') {
+            $this->ensureCustomerRole($order);
             return;
         }
 
@@ -353,7 +352,21 @@ class CheckoutController extends Controller
             );
         });
 
+        $this->ensureCustomerRole($order->fresh());
         $this->referralService->clearReferral();
+    }
+
+    private function ensureCustomerRole(Order $order): void
+    {
+        if (!$order->customer_id) {
+            return;
+        }
+
+        $customer = $order->customer()->first();
+
+        if ($customer && !$customer->hasRole('customer')) {
+            $customer->assignRole('customer');
+        }
     }
 
     private function generateOrderNumber()
