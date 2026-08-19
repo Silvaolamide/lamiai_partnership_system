@@ -66,7 +66,7 @@
                 <thead><tr class="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500"><th class="px-3 py-3">Program</th><th class="px-3 py-3">Sales</th><th class="px-3 py-3">Revenue</th><th class="px-3 py-3">Commission</th></tr></thead>
                 <tbody>
                 @forelse($programStats as $stat)
-                    <tr class="border-b border-slate-100"><td class="px-3 py-4 font-bold">{{ $stat['program']->name }}</td><td class="px-3 py-4">{{ $stat['sales'] }}</td><td class="px-3 py-4">₦{{ number_format($stat['sales_amount'],2) }}</td><td class="px-3 py-4">₦{{ number_format($stat['commission'],2) }}</td></tr>
+                    <tr class="border-b border-slate-100"><td class="px-3 py-4 font-bold">{{ $stat['program']->name }}</td><td class="px-3 py-4">{{ $stat['paid_orders'] }}</td><td class="px-3 py-4">₦{{ number_format($stat['paid_sales_amount'],2) }}</td><td class="px-3 py-4">₦{{ number_format($stat['total_commissions'],2) }}</td></tr>
                 @empty
                     <tr><td colspan="4" class="px-3 py-8 text-center text-slate-500">No program activity yet.</td></tr>
                 @endforelse
