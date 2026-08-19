@@ -61,7 +61,8 @@ class RegistrationController extends Controller
             'business_rejected_at' => null,
         ])->save();
 
-        return back()->with('success', "{$user->business_name ?: $user->name} is now approved.");
+        $name = $user->business_name ?: $user->name;
+        return back()->with('success', "{$name} is now approved.");
     }
 
     public function rejectBusiness(User $user): RedirectResponse
@@ -77,7 +78,8 @@ class RegistrationController extends Controller
             'business_rejected_at' => now(),
         ])->save();
 
-        return back()->with('success', "{$user->business_name ?: $user->name} has been marked rejected.");
+        $name = $user->business_name ?: $user->name;
+        return back()->with('success', "{$name} has been marked rejected.");
     }
 
     public function resendVerification(User $user): RedirectResponse
