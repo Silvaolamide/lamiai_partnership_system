@@ -3,6 +3,8 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>AIPM — AI Powered Marketing | Turn relationships into revenue</title>
+<link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
+<link rel="alternate icon" href="{{ asset('favicon.svg') }}">
 <script src="https://cdn.tailwindcss.com"></script>
 <style>html{scroll-behavior:smooth}.gradient{background:linear-gradient(135deg,#6d28d9,#c026d3)}.gradient-text{background:linear-gradient(90deg,#6d28d9,#c026d3);-webkit-background-clip:text;background-clip:text;color:transparent}.grid-bg{background-image:linear-gradient(rgba(109,40,217,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(109,40,217,.05) 1px,transparent 1px);background-size:40px 40px}</style>
 </head>
