@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\PaymentSubmission;
 use App\Models\ProgramPartner;
 use App\Services\CommissionService;
 use Illuminate\Support\Facades\Auth;
@@ -31,6 +32,10 @@ class PartnerDashboardController extends Controller
             $stats = $this->commissionService->getCommissionStats($partner);
             $orders = $partner->orders()->with(['customer', 'items.product', 'commissions.partner.user', 'commissions.rule'])->latest()->get();
             $paidOrders = $orders->whereIn('status', ['paid', 'completed', 'processing', 'fulfilled']);
+            $pendingPaymentConfirmations = PaymentSubmission::query()
+                ->where('status', 'pending')
+                ->whereHas('order', fn ($query) => $query->where('partner_id', $partner->id))
+                ->count();
 
             $directCommission = $partner->commissions()
                 ->where('level', 1)
@@ -69,6 +74,7 @@ class PartnerDashboardController extends Controller
                 'recruited_partners_count' => $partner->childPartners()->count(),
                 'total_orders' => $orders->count(),
                 'paid_orders' => $paidOrders->count(),
+                'pending_payment_confirmations' => $pendingPaymentConfirmations,
                 'paid_sales_amount' => $grossSales,
                 'direct_commission' => (float) $directCommission,
                 'recruiter_commission' => (float) $recruiterCommission,
@@ -87,6 +93,7 @@ class PartnerDashboardController extends Controller
             'totalSalesAmount' => (float) $programStats->sum('paid_sales_amount'),
             'totalRecruited' => (int) $programStats->sum('recruited_partners_count'),
             'totalNetBusinessRevenue' => (float) $programStats->sum('net_business_revenue'),
+            'totalPendingPaymentConfirmations' => (int) $programStats->sum('pending_payment_confirmations'),
         ]);
     }
 }
