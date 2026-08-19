@@ -17,7 +17,23 @@ class RegistrationController extends Controller
 {
     public function index()
     {
-        $users = User::query()->whereDoesntHave('roles', fn ($query) => $query->where('name', 'super_admin'))->latest()->paginate(25);
+        // Registration recovery is specifically for business registrations.
+        // Customers should never appear here simply because they have not been
+        // verified/approved as a business.
+        $users = User::query()
+            ->whereDoesntHave('roles', fn ($query) => $query->where('name', 'super_admin'))
+            ->where(function ($query) {
+                $query->whereHas('roles', fn ($roleQuery) => $roleQuery->where('name', 'program_manager'))
+                    ->orWhereNotNull('business_name')
+                    ->orWhereNotNull('business_website')
+                    ->orWhereNotNull('business_industry')
+                    ->orWhereNotNull('business_phone')
+                    ->orWhereNotNull('business_super_admin_approved_at')
+                    ->orWhereNotNull('business_rejected_at');
+            })
+            ->latest()
+            ->paginate(25);
+
         return view('admin.registrations.index', compact('users'));
     }
 
