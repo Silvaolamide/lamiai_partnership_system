@@ -35,6 +35,13 @@ class BusinessDashboardController extends Controller
         $businessPaid = (float)BusinessPayout::where('business_id',$ownerId)->whereIn('status',['processed','paid'])->sum('amount');
         $businessRequested = (float)BusinessPayout::where('business_id',$ownerId)->whereIn('status',['requested','approved','processing'])->sum('amount');
 
+        // Only partners in this business's programs and awaiting the business decision are actionable here.
+        $pendingPartnerApprovals = ProgramPartner::whereIn('program_id', $programIds)
+            ->where('status', 'pending')
+            ->whereHas('program', fn ($query) => $query->where('owner_id', $ownerId)->where('settings->partner_business_approval_required', true))
+            ->whereNull('business_approved_at')
+            ->count();
+
         $topAffiliates = $commissions->whereNotIn('status',['reversed','cancelled'])->groupBy('partner_id')->map(function($rows){ $first=$rows->first(); return ['partner'=>$first?->partner,'sales'=>$rows->pluck('order_id')->filter()->unique()->count(),'revenue'=>(float)$rows->sum(fn($c)=>(float)$c->base_amount),'commission'=>(float)$rows->sum(fn($c)=>(float)$c->commission_amount)]; })->sortByDesc('revenue')->take(5)->values();
         $recentOrders = $orders->take(8);
         $recentCommissions = $commissions->take(8);
@@ -64,6 +71,7 @@ class BusinessDashboardController extends Controller
             'business_paid'=>$businessPaid,
             'business_requested'=>$businessRequested,
             'payout_delay_days'=>$delayDays,
+            'pending_partner_approvals'=>$pendingPartnerApprovals,
             'net_revenue'=>max(0,$grossRevenue-$commissionTotal),
         ];
 
