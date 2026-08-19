@@ -17,6 +17,7 @@ class ManualPaymentController extends Controller
     {
         $this->authorizeBuyer($order);
         abort_unless($order->status === 'pending', 422);
+        if ($order->paymentSubmissions()->where('status','pending')->exists()) return redirect()->route('checkout.show',['orderId'=>$order->id])->with('error','A payment proof is already awaiting verification for this order.');
         $data=$request->validate([
             'customer_name'=>['required','string','max:255'], 'customer_email'=>['required','email','max:255'], 'customer_phone'=>['nullable','string','max:30'],
             'amount'=>['required','numeric','min:0.01'], 'bank_name'=>['required','string','max:100'], 'transaction_reference'=>['required','string','max:100'],
@@ -28,5 +29,5 @@ class ManualPaymentController extends Controller
         $order->paymentSubmissions()->create(['amount'=>$data['amount'],'bank_name'=>$data['bank_name'],'transaction_reference'=>$data['transaction_reference'],'transfer_date'=>$data['transfer_date'],'proof_path'=>$path]);
         return redirect()->route('checkout.show',['orderId'=>$order->id])->with('success','Payment proof submitted. Our payment team will verify your transfer.');
     }
-    private function authorizeBuyer(Order $order): void { if (Auth::check()) { abort_unless($order->customer_id === Auth::id(),403); } }
+    private function authorizeBuyer(Order $order): void { if (Auth::check()) abort_unless($order->customer_id === Auth::id(),403); }
 }
