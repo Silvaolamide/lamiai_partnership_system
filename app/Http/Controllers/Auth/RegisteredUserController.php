@@ -31,23 +31,23 @@ class RegisteredUserController extends Controller
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
+        $isBusinessRegistration = $request->session()->pull('business_onboarding_intent', false) === true;
+        $registrationType = $isBusinessRegistration ? 'business' : 'customer';
+
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
+            'registration_type' => $registrationType,
             'password' => Hash::make($request->password),
         ]);
 
-        // The public registration form is explicitly a business account
-        // registration form, so every user created through /register must be
-        // assigned the business/program-manager role. Previously this role was
-        // only assigned when a session flag was set by /business/start, which
-        // meant users who registered directly at /register were created with no
-        // business role and therefore did not appear in the admin business list.
-        $user->assignRole('program_manager');
+        $user->assignRole($isBusinessRegistration ? 'program_manager' : 'customer');
 
         event(new Registered($user));
         Auth::login($user);
 
-        return redirect()->route('business.pending');
+        return $isBusinessRegistration
+            ? redirect()->route('business.pending')
+            : redirect()->route('customer.dashboard');
     }
 }
