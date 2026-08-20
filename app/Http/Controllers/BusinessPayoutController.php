@@ -30,9 +30,7 @@ class BusinessPayoutController extends Controller
             ->whereNull('business_payout_id')
             ->whereNotNull('paid_at')
             ->where('paid_at', '<=', $cutoff)
-            ->where(function ($query) {
-                $query->whereNull('refunded_at')->orWhereNull('refunded_at');
-            })
+            ->whereNull('refunded_at')
             ->with(['program', 'partner.user', 'commissions'])
             ->latest('paid_at')
             ->get()
@@ -44,8 +42,17 @@ class BusinessPayoutController extends Controller
                 $commissionTotal = (float) $order->commissions
                     ->whereNotIn('status', ['reversed', 'cancelled'])
                     ->sum('commission_amount');
-                $adminCharge = round($grossAmount * ($adminChargePercent / 100), 2);
-                $order->admin_charge_percent = $adminChargePercent;
+
+                // New orders contain a snapshot of the platform charge taken at sale time.
+                // Legacy orders are calculated with the current setting until they are migrated.
+                $adminCharge = $order->platform_fee_amount !== null && (float) $order->platform_fee_amount > 0
+                    ? (float) $order->platform_fee_amount
+                    : round($grossAmount * ($adminChargePercent / 100), 2);
+                $effectivePercent = $order->platform_fee_percent !== null && (float) $order->platform_fee_percent > 0
+                    ? (float) $order->platform_fee_percent
+                    : $adminChargePercent;
+
+                $order->admin_charge_percent = $effectivePercent;
                 $order->admin_charge_amount = $adminCharge;
                 $order->gross_amount = $grossAmount;
                 $order->business_net_amount = max(0, round($grossAmount - $commissionTotal - $adminCharge, 2));
