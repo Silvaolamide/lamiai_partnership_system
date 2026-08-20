@@ -40,10 +40,7 @@ class DashboardController extends Controller
             $business->dashboard_metrics = ['programs' => $programIds->count(), 'partners' => ProgramPartner::whereIn('program_id', $programIds)->count(), 'orders' => (clone $paid)->count(), 'sales' => (float) (clone $paid)->sum('total')]; return $business;
         });
 
-        $businessPartnerApprovalQuery = ProgramPartner::query()
-            ->where('status', 'pending')
-            ->whereNull('business_approved_at')
-            ->whereHas('program', fn ($q) => $q->where('settings->partner_business_approval_required', true));
+        $businessPartnerApprovalQuery = ProgramPartner::query()->where('status', 'pending')->whereNull('business_approved_at')->whereHas('program', fn ($q) => $q->where('settings->partner_business_approval_required', true));
         if ($businessId) $businessPartnerApprovalQuery->whereHas('program', fn ($q) => $q->where('owner_id', $businessId));
         if ($programId) $businessPartnerApprovalQuery->where('program_id', $programId);
         $pendingBusinessPartnerApprovals = $businessPartnerApprovalQuery->count();
@@ -57,23 +54,25 @@ class DashboardController extends Controller
         }
         $pendingPaymentConfirmations = $pendingPaymentConfirmationQuery->count();
 
-        // Only accounts explicitly created through the business registration flow belong here.
-        $incompleteBusinessRegistrations = User::query()
-            ->where('registration_type', 'business')
-            ->where(function ($q) {
-                $q->whereNull('email_verified_at')
-                    ->orWhereDoesntHave('roles', fn ($role) => $role->where('name', 'program_manager'))
-                    ->orWhereNull('business_super_admin_approved_at');
-            })
-            ->count();
+        $incompleteBusinessRegistrations = User::query()->where('registration_type', 'business')->where(function ($q) {
+            $q->whereNull('email_verified_at')->orWhereDoesntHave('roles', fn ($role) => $role->where('name', 'program_manager'))->orWhereNull('business_super_admin_approved_at');
+        })->count();
 
+        $pendingPartnerPayouts = Payout::whereIn('status', ['requested', 'pending'])->count();
+        $pendingBusinessPayouts = BusinessPayout::whereIn('status', ['requested', 'pending'])->count();
+
+        // Keep every actionable item as a separate card. Multiple urgent items must coexist.
         $pendingActions = [
-            ['label' => 'URGENT: Payments awaiting confirmation', 'count' => $pendingPaymentConfirmations, 'route' => 'admin.payments.index'],
-            ['label' => 'URGENT: Business registration recovery', 'count' => $incompleteBusinessRegistrations, 'route' => 'admin.registrations.index'],
-            ['label' => 'URGENT: Business partner approvals', 'count' => $pendingBusinessPartnerApprovals, 'route' => 'admin.partners.index'],
-            ['label' => 'Business approvals', 'count' => $stats['pending_businesses'], 'route' => 'admin.businesses.index'], ['label' => 'Partner approvals', 'count' => $stats['pending_partners'], 'route' => 'admin.partners.index'],
-            ['label' => 'Partner payouts', 'count' => Payout::whereIn('status', ['requested', 'pending'])->count(), 'route' => 'admin.payouts.index'], ['label' => 'Business payouts', 'count' => BusinessPayout::whereIn('status', ['requested', 'pending'])->count(), 'route' => 'admin.business-payouts.index'],
+            ['label' => 'URGENT: Payments awaiting confirmation', 'count' => $pendingPaymentConfirmations, 'route' => 'admin.payments.index', 'urgent' => true, 'priority' => 100],
+            ['label' => 'URGENT: Business payout requests', 'count' => $pendingBusinessPayouts, 'route' => 'admin.business-payouts.index', 'urgent' => true, 'priority' => 95],
+            ['label' => 'URGENT: Partner payout requests', 'count' => $pendingPartnerPayouts, 'route' => 'admin.payouts.index', 'urgent' => true, 'priority' => 90],
+            ['label' => 'URGENT: Business registration recovery', 'count' => $incompleteBusinessRegistrations, 'route' => 'admin.registrations.index', 'urgent' => true, 'priority' => 85],
+            ['label' => 'URGENT: Business partner approvals', 'count' => $pendingBusinessPartnerApprovals, 'route' => 'admin.partners.index', 'urgent' => true, 'priority' => 80],
+            ['label' => 'Business approvals', 'count' => $stats['pending_businesses'], 'route' => 'admin.businesses.index', 'urgent' => false, 'priority' => 50],
+            ['label' => 'Partner approvals', 'count' => $stats['pending_partners'], 'route' => 'admin.partners.index', 'urgent' => false, 'priority' => 40],
         ];
+        $pendingActions = collect($pendingActions)->filter(fn ($action) => $action['count'] > 0)->sortByDesc('priority')->values()->all();
+
         $series = $this->analytics->series($from, $to, $businessId, $programId);
         $businessOptions = User::role('program_manager')->orderBy('name')->get(['id','name','business_name']);
         $programOptions = PartnershipProgram::when($businessId, fn ($q) => $q->where('owner_id', $businessId))->orderBy('name')->get(['id','name','owner_id']);
