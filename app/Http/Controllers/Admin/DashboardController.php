@@ -76,7 +76,47 @@ class DashboardController extends Controller
         $series = $this->analytics->series($from, $to, $businessId, $programId);
         $businessOptions = User::role('program_manager')->orderBy('name')->get(['id','name','business_name']);
         $programOptions = PartnershipProgram::when($businessId, fn ($q) => $q->where('owner_id', $businessId))->orderBy('name')->get(['id','name','owner_id']);
-        return view('admin.dashboard', compact('stats', 'recentOrders', 'topPartners', 'programs', 'businesses', 'pendingActions', 'series', 'from', 'to', 'businessOptions', 'programOptions', 'businessId', 'programId'));
+
+        $viewData = compact('stats', 'recentOrders', 'topPartners', 'programs', 'businesses', 'pendingActions', 'series', 'from', 'to', 'businessOptions', 'programOptions', 'businessId', 'programId');
+        $view = view('admin.dashboard', $viewData);
+
+        // Render a dedicated high-visibility urgent area above the analytics section.
+        // Each actionable item gets its own banner, so multiple urgent items are shown simultaneously.
+        $urgentActions = collect($pendingActions)->where('urgent', true)->values();
+        if ($urgentActions->isNotEmpty()) {
+            $urgentBanners = $urgentActions->map(function (array $action) {
+                $isBusinessPayout = $action['route'] === 'admin.business-payouts.index';
+                $isPayment = $action['route'] === 'admin.payments.index';
+                $title = e($action['label']);
+                $count = number_format((int) $action['count']);
+                $tone = $isBusinessPayout || $isPayment ? 'rose' : 'amber';
+                $icon = $isBusinessPayout ? '₦' : ($isPayment ? '!' : '⚠');
+
+                return '<a href="' . route($action['route']) . '" class="group relative flex min-h-[92px] items-center justify-between gap-4 overflow-hidden rounded-2xl border border-' . $tone . '-200 bg-gradient-to-r from-' . $tone . '-50 via-white to-white px-5 py-4 shadow-sm ring-1 ring-' . $tone . '-100 transition hover:-translate-y-0.5 hover:shadow-lg">'
+                    . '<div class="absolute inset-y-0 left-0 w-1.5 bg-' . $tone . '-500"></div>'
+                    . '<div class="flex min-w-0 items-center gap-4">'
+                    . '<span class="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-' . $tone . '-100 text-lg font-black text-' . $tone . '-700 ring-1 ring-' . $tone . '-200">' . $icon . '</span>'
+                    . '<div class="min-w-0"><div class="flex flex-wrap items-center gap-2"><span class="text-[10px] font-black uppercase tracking-[0.18em] text-' . $tone . '-700">URGENT ACTION</span><span class="rounded-full bg-' . $tone . '-100 px-2 py-0.5 text-[10px] font-black text-' . $tone . '-700">' . $count . ' pending</span></div><div class="mt-1 truncate text-base font-black text-slate-950">' . $title . '</div><div class="mt-1 text-xs font-medium text-slate-500">Open the queue and take action now →</div></div>'
+                    . '</div><span class="hidden shrink-0 rounded-xl bg-slate-950 px-4 py-2.5 text-xs font-black text-white sm:inline-flex">Review now →</span>'
+                    . '</a>';
+            })->implode('');
+
+            $urgentSection = '<section class="mb-6 space-y-3" aria-label="Urgent admin actions">'
+                . '<div class="flex items-end justify-between gap-3"><div><div class="text-[10px] font-black uppercase tracking-[0.2em] text-rose-600">Immediate attention required</div><h3 class="mt-1 text-xl font-black tracking-tight text-slate-950">Urgent operations</h3><p class="mt-1 text-xs text-slate-500">These queues require admin action. Multiple urgent items remain visible at the same time.</p></div><span class="rounded-full bg-rose-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-rose-700 ring-1 ring-rose-100">' . number_format($urgentActions->sum('count')) . ' total pending</span></div>'
+                . '<div class="grid grid-cols-1 gap-3 lg:grid-cols-2">' . $urgentBanners . '</div>'
+                . '</section>';
+
+            $html = $view->render();
+            $marker = '<div class="grid grid-cols-1 gap-5 xl:grid-cols-3">';
+            $html = str_replace($marker, $urgentSection . "\n        " . $marker, $html, $markerCount);
+            if ($markerCount === 0) {
+                $html = $html . $urgentSection;
+            }
+
+            return response($html);
+        }
+
+        return $view;
     }
 
     public function realtimeSales(Request $request)
