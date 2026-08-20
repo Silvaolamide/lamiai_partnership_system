@@ -45,7 +45,23 @@ class CommissionService
                 ];
             }
 
-            $order->loadMissing(['partner.parentPartner', 'items.product']);
+            $order->loadMissing(['partner.user', 'partner.parentPartner', 'items.product']);
+
+            // A partner may purchase a product, but must never earn commission from their own purchase.
+            // This is enforced here as the final safeguard for demo, manual and Paystack payment flows.
+            if ($order->partner && $order->customer_id && (int) $order->partner->user_id === (int) $order->customer_id) {
+                return [
+                    'success' => true,
+                    'status' => 'self_purchase',
+                    'message' => 'Partner self-purchase detected; no commissions generated.',
+                    'order_id' => $order->id,
+                    'commissions_generated' => 0,
+                    'commissions' => [],
+                    'total_amount' => 0,
+                    'total_commission' => 0,
+                ];
+            }
+
             $commissions = [];
 
             $directCommission = $this->generateDirectCommission($order);
