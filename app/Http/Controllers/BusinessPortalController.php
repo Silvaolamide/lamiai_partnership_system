@@ -107,19 +107,46 @@ class BusinessPortalController extends Controller
     public function storeProduct(Request $request)
     {
         $data = $request->validate([
-            'name' => ['required', 'string', 'max:255'], 'description' => ['nullable', 'string'],
+            'name' => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string'],
             'sku' => ['nullable', 'string', 'max:255', 'unique:products,sku'],
-            'price' => ['required', 'numeric', 'min:0'], 'currency' => ['required', 'string', 'max:10'],
+            'price' => ['required', 'numeric', 'min:0'],
+            'currency' => ['required', 'string', 'max:10'],
             'status' => ['required', 'in:draft,active,inactive'],
             'landing_page' => ['nullable', 'string', 'in:'.implode(',', array_keys(config('landing_pages', [])))],
+            'delivery_type' => ['nullable', 'string', 'in:link,video,ebook,download,course'],
+            'delivery_url' => ['nullable', 'url:http,https'],
+            'delivery_label' => ['nullable', 'string', 'max:120'],
         ]);
+
         $base = Str::slug($data['name']);
         $slug = $base; $i = 1;
         while (Product::where('slug', $slug)->exists()) $slug = $base.'-'.(++$i);
-        $data['slug'] = $slug; $data['owner_id'] = $this->owner($request);
+
+        $data['slug'] = $slug;
+        $data['owner_id'] = $this->owner($request);
         $landingPage = $data['landing_page'] ?? 'classic';
-        unset($data['landing_page']);
-        $data['metadata'] = ['landing_page' => $landingPage];
+        $deliveryType = $data['delivery_type'] ?? null;
+        $deliveryUrl = $data['delivery_url'] ?? null;
+        $deliveryLabel = $data['delivery_label'] ?? null;
+        unset($data['landing_page'], $data['delivery_type'], $data['delivery_url'], $data['delivery_label']);
+
+        $data['metadata'] = [
+            'landing_page' => $landingPage,
+            'delivery' => [
+                'type' => $deliveryType,
+                'url' => $deliveryUrl,
+                'label' => $deliveryLabel ?: match ($deliveryType) {
+                    'ebook' => 'Read / download ebook',
+                    'video' => 'Watch video',
+                    'course' => 'Open course',
+                    'download' => 'Download product',
+                    'link' => 'Open product',
+                    default => 'Access product',
+                },
+            ],
+        ];
+
         Product::create($data);
         return redirect()->route('business.products.index')->with('success', 'Product created successfully.');
     }
@@ -127,10 +154,15 @@ class BusinessPortalController extends Controller
     public function editProduct(Request $request, Product $product): View
     {
         $product = $this->product($request, $product)->load('partnershipPrograms');
+        $delivery = is_array($product->metadata) ? ($product->metadata['delivery'] ?? []) : [];
+
         return view('business.products.edit', [
             'product' => $product,
             'landingPages' => config('landing_pages', []),
             'selectedLandingPage' => data_get($product->metadata, 'landing_page', 'classic'),
+            'deliveryType' => $delivery['type'] ?? null,
+            'deliveryUrl' => $delivery['url'] ?? null,
+            'deliveryLabel' => $delivery['label'] ?? null,
         ]);
     }
 
@@ -138,17 +170,37 @@ class BusinessPortalController extends Controller
     {
         $product = $this->product($request, $product);
         $data = $request->validate([
-            'name' => ['required', 'string', 'max:255'], 'description' => ['nullable', 'string'],
+            'name' => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string'],
             'sku' => ['nullable', 'string', 'max:255', 'unique:products,sku,'.$product->id],
-            'price' => ['required', 'numeric', 'min:0'], 'currency' => ['required', 'string', 'max:10'],
+            'price' => ['required', 'numeric', 'min:0'],
+            'currency' => ['required', 'string', 'max:10'],
             'status' => ['required', 'in:draft,active,inactive'],
             'landing_page' => ['nullable', 'string', 'in:'.implode(',', array_keys(config('landing_pages', [])))],
+            'delivery_type' => ['nullable', 'string', 'in:link,video,ebook,download,course'],
+            'delivery_url' => ['nullable', 'url:http,https'],
+            'delivery_label' => ['nullable', 'string', 'max:120'],
         ]);
+
         $metadata = is_array($product->metadata) ? $product->metadata : [];
         $metadata['landing_page'] = $data['landing_page'] ?? 'classic';
-        unset($data['landing_page']);
+        $metadata['delivery'] = [
+            'type' => $data['delivery_type'] ?? null,
+            'url' => $data['delivery_url'] ?? null,
+            'label' => $data['delivery_label'] ?: match ($data['delivery_type'] ?? null) {
+                'ebook' => 'Read / download ebook',
+                'video' => 'Watch video',
+                'course' => 'Open course',
+                'download' => 'Download product',
+                'link' => 'Open product',
+                default => 'Access product',
+            },
+        ];
+
+        unset($data['landing_page'], $data['delivery_type'], $data['delivery_url'], $data['delivery_label']);
         $data['metadata'] = $metadata;
         $product->update($data);
+
         return redirect()->route('business.products.index')->with('success', 'Product updated successfully.');
     }
 
