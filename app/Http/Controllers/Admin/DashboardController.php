@@ -80,7 +80,7 @@ class DashboardController extends Controller
         $viewData = compact('stats', 'recentOrders', 'topPartners', 'programs', 'businesses', 'pendingActions', 'series', 'from', 'to', 'businessOptions', 'programOptions', 'businessId', 'programId');
         $view = view('admin.dashboard', $viewData);
 
-        // Render a dedicated high-visibility urgent area above the analytics section.
+        // Render a dedicated high-visibility urgent area above the executive overview.
         // Each actionable item gets its own banner, so multiple urgent items are shown simultaneously.
         $urgentActions = collect($pendingActions)->where('urgent', true)->values();
         if ($urgentActions->isNotEmpty()) {
@@ -107,8 +107,8 @@ class DashboardController extends Controller
                 . '</section>';
 
             $html = $view->render();
-            $marker = '<div class="grid grid-cols-1 gap-5 xl:grid-cols-3">';
-            $html = str_replace($marker, $urgentSection . "\n        " . $marker, $html, $markerCount);
+            $marker = '        {{-- Hero --}}';
+            $html = str_replace($marker, $urgentSection . "\n\n" . $marker, $html, $markerCount);
             if ($markerCount === 0) {
                 $html = $html . $urgentSection;
             }
