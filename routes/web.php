@@ -29,6 +29,7 @@ use App\Http\Controllers\PartnerReferralShowcaseController;
 use App\Http\Controllers\PartnershipProgramController;
 use App\Http\Controllers\PaymentDisputeController;
 use App\Http\Controllers\PayoutController;
+use App\Http\Controllers\ProductAccessController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProductShowController;
 use App\Http\Controllers\ProfileController;
@@ -66,9 +67,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/business/onboarding/{step}', [BusinessOnboardingController::class, 'store'])->name('business.onboarding.store');
     });
     Route::get('/network', [NetworkController::class, 'index'])->middleware('role:super_admin|program_manager|partner')->name('network.index');
-    Route::get('/customer/dashboard', [CustomerDashboardController::class, 'index'])
-        ->middleware('role:customer|partner|program_manager|super_admin')
-        ->name('customer.dashboard');
+    // Purchasing is a capability, not a mutually-exclusive role. Partners/admins/businesses
+    // who are legitimate purchasers can all access their own paid purchases here.
+    Route::get('/customer/dashboard', [CustomerDashboardController::class, 'index'])->name('customer.dashboard');
+    Route::get('/my-products/{item}', [ProductAccessController::class, 'show'])->name('customer.product-access');
 });
 Route::get('/business/start', [BusinessOnboardingController::class, 'start'])->name('business.start');
 Route::middleware(['auth', 'role:super_admin'])->prefix('admin')->group(function () {
