@@ -78,11 +78,17 @@ class AdminAnalyticsService
     {
         $sales = $this->orderQuery($from, $to, $businessId, $programId)->selectRaw('DATE(created_at) as day, COUNT(*) as orders, SUM(total) as sales')->groupByRaw('DATE(created_at)')->orderBy('day')->get()->keyBy('day');
         $commissions = $this->commissionQuery($from, $to, $businessId, $programId)->selectRaw('DATE(created_at) as day, SUM(commission_amount) as commissions')->groupByRaw('DATE(created_at)')->orderBy('day')->get()->keyBy('day');
-        $orderRows = $this->orderQuery($from, $to, $businessId, $programId)->select(['created_at','total','platform_fee_amount'])->get();
-        $platformFees = $orderRows->groupBy(fn ($order) => $order->created_at->format('Y-m-d'))->map(function ($rows) {
-            $rate = min(100, max(0, (float) PlatformSetting::getValue('admin_charge_percent', 0)));
-            return (float) $rows->sum(fn ($order) => (float) $order->platform_fee_amount > 0 ? (float) $order->platform_fee_amount : round((float) $order->total * ($rate / 100), 2));
+
+        // Platform fees are derived from the configured admin charge rate when the
+        // order table does not have a persisted platform_fee_amount column. This
+        // keeps analytics compatible with existing databases while still showing
+        // the same fee used by the payout calculations.
+        $orderRows = $this->orderQuery($from, $to, $businessId, $programId)->select(['created_at', 'total'])->get();
+        $rate = min(100, max(0, (float) PlatformSetting::getValue('admin_charge_percent', 0)));
+        $platformFees = $orderRows->groupBy(fn ($order) => $order->created_at->format('Y-m-d'))->map(function ($rows) use ($rate) {
+            return (float) $rows->sum(fn ($order) => round((float) $order->total * ($rate / 100), 2));
         });
+
         $labels = $sales->keys()->merge($commissions->keys())->merge($platformFees->keys())->unique()->sort()->values();
         return $labels->map(fn ($day) => ['date' => $day, 'sales' => (float) ($sales[$day]->sales ?? 0), 'orders' => (int) ($sales[$day]->orders ?? 0), 'commissions' => (float) ($commissions[$day]->commissions ?? 0), 'platform_fees' => (float) ($platformFees[$day] ?? 0)])->values()->all();
     }
