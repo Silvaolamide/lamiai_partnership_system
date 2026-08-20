@@ -32,6 +32,12 @@ class CommissionService
                 ];
             }
 
+            // Snapshot the platform/admin charge at the moment the sale is completed.
+            // This keeps the business payout and platform revenue deterministic even if
+            // the administrator changes the fee percentage later.
+            app(PlatformFeeService::class)->applyToOrder($order);
+            $order->refresh();
+
             if (!$order->program_id || !$order->partner_id) {
                 return [
                     'success' => true,
@@ -48,7 +54,6 @@ class CommissionService
             $order->loadMissing(['partner.user', 'partner.parentPartner', 'items.product']);
 
             // A partner may purchase a product, but must never earn commission from their own purchase.
-            // This is enforced here as the final safeguard for demo, manual and Paystack payment flows.
             if ($order->partner && $order->customer_id && (int) $order->partner->user_id === (int) $order->customer_id) {
                 return [
                     'success' => true,
@@ -84,6 +89,7 @@ class CommissionService
                 'commissions' => $commissions,
                 'total_amount' => $totalAmount,
                 'total_commission' => $totalAmount,
+                'platform_fee_amount' => (float) $order->platform_fee_amount,
             ];
         });
     }
