@@ -7,12 +7,13 @@ use Illuminate\Database\Eloquent\Model;
 class Product extends Model
 {
     protected $fillable = [
-        'owner_id', 'name', 'slug', 'description', 'sku', 'price', 'currency', 'status', 'metadata',
+        'owner_id', 'name', 'slug', 'description', 'featured_image', 'media', 'sku', 'price', 'currency', 'status', 'metadata',
     ];
 
     protected $casts = [
         'price' => 'decimal:2',
         'metadata' => 'json',
+        'media' => 'json',
     ];
 
     public function owner()
