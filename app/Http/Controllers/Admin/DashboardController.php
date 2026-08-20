@@ -80,8 +80,8 @@ class DashboardController extends Controller
         $viewData = compact('stats', 'recentOrders', 'topPartners', 'programs', 'businesses', 'pendingActions', 'series', 'from', 'to', 'businessOptions', 'programOptions', 'businessId', 'programId');
         $view = view('admin.dashboard', $viewData);
 
-        // Render a dedicated high-visibility urgent area above the executive overview.
-        // Each actionable item gets its own banner, so multiple urgent items are shown simultaneously.
+        // Place urgent operations immediately before the Executive overview hero.
+        // Do not depend on Blade comments: those are stripped before rendering.
         $urgentActions = collect($pendingActions)->where('urgent', true)->values();
         if ($urgentActions->isNotEmpty()) {
             $urgentBanners = $urgentActions->map(function (array $action) {
@@ -107,10 +107,10 @@ class DashboardController extends Controller
                 . '</section>';
 
             $html = $view->render();
-            $marker = '        {{-- Hero --}}';
-            $html = str_replace($marker, $urgentSection . "\n\n" . $marker, $html, $markerCount);
+            $heroMarker = '<section class="relative overflow-hidden rounded-[28px] bg-slate-950 px-6 py-7 text-white shadow-2xl shadow-slate-900/10 sm:px-8 sm:py-8">';
+            $html = str_replace($heroMarker, $urgentSection . "\n\n        " . $heroMarker, $html, $markerCount);
             if ($markerCount === 0) {
-                $html = $html . $urgentSection;
+                throw new \RuntimeException('Unable to locate the admin dashboard Executive overview hero marker.');
             }
 
             return response($html);
