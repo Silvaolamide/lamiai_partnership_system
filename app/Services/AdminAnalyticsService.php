@@ -8,6 +8,7 @@ use App\Models\PartnershipProgram;
 use App\Models\Product;
 use App\Models\ProgramPartner;
 use App\Models\Payout;
+use App\Models\PlatformSetting;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -47,12 +48,22 @@ class AdminAnalyticsService
         $commissions = $this->commissionQuery($from, $to, $businessId, $programId);
         $gross = (float) (clone $orders)->sum('total');
         $commissionTotal = (float) (clone $commissions)->sum('commission_amount');
+        $adminChargePercent = min(100, max(0, (float) PlatformSetting::getValue('admin_charge_percent', 0)));
+        $platformFees = (float) (clone $orders)->get()->sum(function (Order $order) use ($adminChargePercent) {
+            return (float) $order->platform_fee_amount > 0
+                ? (float) $order->platform_fee_amount
+                : round((float) $order->total * ($adminChargePercent / 100), 2);
+        });
         $programScope = PartnershipProgram::query()->when($businessId, fn ($q) => $q->where('owner_id', $businessId))->when($programId, fn ($q) => $q->whereKey($programId));
         $programIds = $programScope->select('id');
         $payouts = Payout::query()->whereIn('status', ['requested', 'pending', 'approved'])->when($businessId, fn ($q) => $q->whereIn('program_id', PartnershipProgram::select('id')->where('owner_id', $businessId)))->when($programId, fn ($q) => $q->where('program_id', $programId));
 
         return [
-            'gross_sales' => $gross, 'commission_total' => $commissionTotal, 'net_revenue' => max(0, $gross - $commissionTotal), 'orders' => (clone $orders)->count(),
+            'gross_sales' => $gross,
+            'commission_total' => $commissionTotal,
+            'platform_fees' => $platformFees,
+            'net_revenue' => $platformFees,
+            'orders' => (clone $orders)->count(),
             'partners' => ProgramPartner::whereIn('program_id', $programIds)->count(), 'active_partners' => ProgramPartner::whereIn('program_id', $programIds)->where('status', 'active')->count(),
             'pending_partners' => ProgramPartner::whereIn('program_id', $programIds)->where('status', 'pending')->count(), 'programs' => (clone $programScope)->count(),
             'products' => ($businessId || $programId) ? Product::whereHas('partnershipPrograms', fn ($q) => $q->whereIn('partnership_programs.id', $programIds))->count() : Product::count(),
@@ -67,7 +78,12 @@ class AdminAnalyticsService
     {
         $sales = $this->orderQuery($from, $to, $businessId, $programId)->selectRaw('DATE(created_at) as day, COUNT(*) as orders, SUM(total) as sales')->groupByRaw('DATE(created_at)')->orderBy('day')->get()->keyBy('day');
         $commissions = $this->commissionQuery($from, $to, $businessId, $programId)->selectRaw('DATE(created_at) as day, SUM(commission_amount) as commissions')->groupByRaw('DATE(created_at)')->orderBy('day')->get()->keyBy('day');
-        $labels = $sales->keys()->merge($commissions->keys())->unique()->sort()->values();
-        return $labels->map(fn ($day) => ['date' => $day, 'sales' => (float) ($sales[$day]->sales ?? 0), 'orders' => (int) ($sales[$day]->orders ?? 0), 'commissions' => (float) ($commissions[$day]->commissions ?? 0)])->values()->all();
+        $orderRows = $this->orderQuery($from, $to, $businessId, $programId)->select(['created_at','total','platform_fee_amount'])->get();
+        $platformFees = $orderRows->groupBy(fn ($order) => $order->created_at->format('Y-m-d'))->map(function ($rows) {
+            $rate = min(100, max(0, (float) PlatformSetting::getValue('admin_charge_percent', 0)));
+            return (float) $rows->sum(fn ($order) => (float) $order->platform_fee_amount > 0 ? (float) $order->platform_fee_amount : round((float) $order->total * ($rate / 100), 2));
+        });
+        $labels = $sales->keys()->merge($commissions->keys())->merge($platformFees->keys())->unique()->sort()->values();
+        return $labels->map(fn ($day) => ['date' => $day, 'sales' => (float) ($sales[$day]->sales ?? 0), 'orders' => (int) ($sales[$day]->orders ?? 0), 'commissions' => (float) ($commissions[$day]->commissions ?? 0), 'platform_fees' => (float) ($platformFees[$day] ?? 0)])->values()->all();
     }
 }
