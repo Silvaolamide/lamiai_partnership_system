@@ -17,9 +17,20 @@ class CustomerDashboardController extends Controller
 
         $products = $orders
             ->flatMap(fn ($order) => $order->items)
-            ->map(fn ($item) => $item->product)
-            ->filter()
-            ->unique('id')
+            ->filter(fn ($item) => $item->product)
+            ->map(function ($item) {
+                $product = $item->product;
+                $delivery = is_array($product->metadata) ? ($product->metadata['delivery'] ?? []) : [];
+
+                return [
+                    'item' => $item,
+                    'product' => $product,
+                    'delivery_type' => $delivery['type'] ?? null,
+                    'delivery_label' => $delivery['label'] ?? null,
+                    'has_access' => !empty($delivery['url']),
+                ];
+            })
+            ->unique(fn ($entry) => $entry['product']->id)
             ->values();
 
         return view('customer.dashboard', compact('orders', 'products'));
