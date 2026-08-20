@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Customer Dashboard - LAMI AI</title>
+    <title>My Purchases - LAMI AI</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="min-h-screen bg-slate-50 text-slate-900">
@@ -11,10 +11,17 @@
         <div class="mx-auto flex max-w-7xl items-center justify-between px-4 py-5 sm:px-6 lg:px-8">
             <div>
                 <p class="text-sm font-bold tracking-wide text-blue-600">LAMI AI</p>
-                <h1 class="text-xl font-extrabold">Customer Dashboard</h1>
+                <h1 class="text-xl font-extrabold">My Purchases</h1>
             </div>
             <div class="flex items-center gap-4 text-sm">
                 <span class="hidden text-slate-500 sm:inline">{{ auth()->user()->name }}</span>
+                @if(auth()->user()->hasRole('partner'))
+                    <a href="{{ route('partner.dashboard') }}" class="font-semibold text-blue-600 hover:text-blue-700">Partner Dashboard</a>
+                @elseif(auth()->user()->hasRole('super_admin'))
+                    <a href="{{ route('admin') }}" class="font-semibold text-blue-600 hover:text-blue-700">Admin</a>
+                @elseif(auth()->user()->hasRole('program_manager'))
+                    <a href="{{ route('business.dashboard') }}" class="font-semibold text-blue-600 hover:text-blue-700">Business</a>
+                @endif
                 <form method="POST" action="{{ route('logout') }}">
                     @csrf
                     <button class="font-semibold text-slate-700 hover:text-blue-600">Log out</button>
@@ -27,19 +34,23 @@
         @if(session('status'))
             <div class="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">{{ session('status') }}</div>
         @endif
+        @if(session('error'))
+            <div class="mb-6 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">{{ session('error') }}</div>
+        @endif
 
-        <div class="mb-10">
-            <p class="text-sm font-semibold uppercase tracking-wider text-blue-600">Welcome back</p>
-            <h2 class="mt-2 text-3xl font-extrabold tracking-tight">Hello, {{ auth()->user()->name }} 👋</h2>
-            <p class="mt-2 text-slate-600">Your purchased products and order history are all in one place.</p>
+        <div class="mb-10 rounded-3xl bg-slate-950 p-7 text-white shadow-xl sm:p-10">
+            <p class="text-sm font-bold uppercase tracking-widest text-blue-300">Your learning library</p>
+            <h2 class="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl">Everything you've purchased, ready when you are.</h2>
+            <p class="mt-3 max-w-2xl text-slate-300">Access your ebooks, videos, courses, downloads and other product resources from one secure place.</p>
         </div>
 
         <section>
             <div class="mb-5 flex items-end justify-between gap-4">
                 <div>
                     <h3 class="text-2xl font-bold">My Products</h3>
-                    <p class="mt-1 text-sm text-slate-500">Products you have successfully purchased.</p>
+                    <p class="mt-1 text-sm text-slate-500">Paid products available to you.</p>
                 </div>
+                <a href="{{ route('home') }}" class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold hover:border-blue-300">Browse more</a>
             </div>
 
             @if($products->isEmpty())
@@ -50,7 +61,8 @@
                 </div>
             @else
                 <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                    @foreach($products as $product)
+                    @foreach($products as $entry)
+                        @php($product = $entry['product'])
                         <article class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                             @if($product->image_url)
                                 <img src="{{ $product->image_url }}" alt="{{ $product->name }}" class="h-44 w-full object-cover">
@@ -58,14 +70,25 @@
                                 <div class="flex h-44 items-center justify-center bg-slate-100 text-sm font-semibold text-slate-400">LAMI AI</div>
                             @endif
                             <div class="p-6">
-                                <h4 class="text-lg font-bold">{{ $product->name }}</h4>
+                                <div class="flex items-start justify-between gap-3">
+                                    <h4 class="text-lg font-bold">{{ $product->name }}</h4>
+                                    <span class="rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-black uppercase tracking-wide text-emerald-700">Purchased</span>
+                                </div>
                                 @if($product->description)
                                     <p class="mt-2 line-clamp-3 text-sm text-slate-500">{{ $product->description }}</p>
                                 @endif
-                                <div class="mt-5 flex items-center justify-between gap-4">
-                                    <span class="text-xs font-semibold uppercase tracking-wide text-emerald-600">Purchased</span>
-                                    <a href="{{ route('product.show', ['slug' => $product->slug]) }}" class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">View product</a>
+
+                                <div class="mt-5 rounded-xl bg-slate-50 p-4">
+                                    <p class="text-xs font-bold uppercase tracking-wide text-slate-500">Your access</p>
+                                    @if($entry['has_access'])
+                                        <p class="mt-1 text-sm font-semibold text-slate-800">{{ $entry['delivery_label'] ?: 'Your product is ready.' }}</p>
+                                        <a href="{{ route('customer.product-access', ['item' => $entry['item']->id]) }}" class="mt-3 inline-flex w-full items-center justify-center rounded-xl bg-blue-600 px-4 py-3 text-sm font-black text-white hover:bg-blue-700">{{ $entry['delivery_label'] ?: 'Access product' }} →</a>
+                                    @else
+                                        <p class="mt-1 text-sm text-amber-700">Access is being prepared by the product owner.</p>
+                                    @endif
                                 </div>
+
+                                <a href="{{ route('product.show', ['slug' => $product->slug]) }}" class="mt-4 inline-flex text-sm font-bold text-slate-600 hover:text-blue-600">View product information</a>
                             </div>
                         </article>
                     @endforeach
