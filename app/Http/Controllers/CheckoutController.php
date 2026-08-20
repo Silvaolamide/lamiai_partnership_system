@@ -42,6 +42,12 @@ class CheckoutController extends Controller
             return redirect()->back()->with('error', 'This product is not available for purchase.');
         }
 
+        // Businesses may sell their own products, but cannot purchase their own products.
+        // Partners and administrators are allowed to purchase products.
+        if (Auth::check() && (int) $product->owner_id === (int) Auth::id() && Auth::user()->hasRole('program_manager')) {
+            return redirect()->back()->with('error', 'You cannot purchase a product owned by your business.');
+        }
+
         $referral = $this->referralService->getReferral();
         $program = null;
         $partnerId = null;
@@ -53,7 +59,12 @@ class CheckoutController extends Controller
                 $partner = $this->referralService->getProgramPartner();
 
                 if ($partner && $partner->program_id == $program->id && $partner->status === 'active') {
-                    $partnerId = $partner->id;
+                    // A partner may buy through their own storefront, but the order must not
+                    // be attributed to that same partner. CommissionService also enforces this
+                    // rule as a final server-side safeguard.
+                    if (!(Auth::check() && (int) $partner->user_id === (int) Auth::id())) {
+                        $partnerId = $partner->id;
+                    }
                 } else {
                     $this->referralService->clearReferral();
                 }
@@ -276,7 +287,6 @@ class CheckoutController extends Controller
                 ->with('warning', 'Payment was recorded, but commission processing needs administrator attention.');
         }
 
-        $this->ensureCustomerRole($order);
         $this->referralService->clearReferral();
 
         return $this->postPaymentRedirect($request, $order);
@@ -291,7 +301,6 @@ class CheckoutController extends Controller
         }
 
         if (Auth::check() && $order->customer_id === Auth::id()) {
-            $this->ensureCustomerRole($order);
             return redirect()->route('customer.dashboard');
         }
 
@@ -304,7 +313,6 @@ class CheckoutController extends Controller
     private function postPaymentRedirect(Request $request, Order $order)
     {
         if (Auth::check() && $order->customer_id === Auth::id()) {
-            $this->ensureCustomerRole($order);
             return redirect()->route('customer.dashboard');
         }
 
@@ -317,7 +325,6 @@ class CheckoutController extends Controller
     private function completePaystackOrder(Order $order, array $data): void
     {
         if ($order->status === 'paid') {
-            $this->ensureCustomerRole($order);
             return;
         }
 
@@ -352,21 +359,7 @@ class CheckoutController extends Controller
             );
         });
 
-        $this->ensureCustomerRole($order->fresh());
         $this->referralService->clearReferral();
-    }
-
-    private function ensureCustomerRole(Order $order): void
-    {
-        if (!$order->customer_id) {
-            return;
-        }
-
-        $customer = $order->customer()->first();
-
-        if ($customer && !$customer->hasRole('customer')) {
-            $customer->assignRole('customer');
-        }
     }
 
     private function generateOrderNumber()
