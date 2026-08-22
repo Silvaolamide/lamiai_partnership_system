@@ -3,11 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\Order;
-use App\Models\OrderItem;
 use App\Models\Product;
-use App\Services\ReferralService;
+use App\Services\CheckoutOrderService;
 use App\Services\CommissionService;
 use App\Services\PaystackService;
+use App\Services\ReferralService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -16,129 +16,45 @@ use Illuminate\Support\Str;
 
 class CheckoutController extends Controller
 {
-    protected $referralService;
-    protected $commissionService;
-    protected $paystackService;
-
     public function __construct(
-        ReferralService $referralService,
-        CommissionService $commissionService,
-        PaystackService $paystackService
-    ) {
-        $this->referralService = $referralService;
-        $this->commissionService = $commissionService;
-        $this->paystackService = $paystackService;
-    }
+        protected ReferralService $referralService,
+        protected CommissionService $commissionService,
+        protected PaystackService $paystackService,
+        protected CheckoutOrderService $checkoutOrderService,
+    ) {}
 
+    /**
+     * Start checkout without creating an order. An order is created only when
+     * the customer actually chooses a payment method.
+     */
     public function create(Request $request)
     {
-        $validated = $request->validate(['product_id' => ['required', 'exists:products,id']]);
+        $validated = $request->validate([
+            'product_id' => ['required', 'exists:products,id'],
+        ]);
 
-        $product = Product::with(['partnershipPrograms' => function ($query) {
-            $query->where('status', 'active');
-        }])->findOrFail($validated['product_id']);
+        $product = Product::findOrFail($validated['product_id']);
+        $this->validatePurchasableProduct($product);
 
-        if ($product->status !== 'active') {
-            return redirect()->back()->with('error', 'This product is not available for purchase.');
-        }
+        $request->session()->put('checkout_product_id', $product->id);
 
-        // Businesses may sell their own products, but cannot purchase their own products.
-        // Partners and administrators are allowed to purchase products.
-        if (Auth::check() && (int) $product->owner_id === (int) Auth::id() && Auth::user()->hasRole('program_manager')) {
-            return redirect()->back()->with('error', 'You cannot purchase a product owned by your business.');
-        }
-
-        $referral = $this->referralService->getReferral();
-        $program = null;
-        $partnerId = null;
-
-        if ($referral) {
-            $program = $product->partnershipPrograms->firstWhere('id', $referral['program_id']);
-
-            if ($program) {
-                $partner = $this->referralService->getProgramPartner();
-
-                if ($partner && $partner->program_id == $program->id && $partner->status === 'active') {
-                    // A partner may buy through their own storefront, but the order must not
-                    // be attributed to that same partner. CommissionService also enforces this
-                    // rule as a final server-side safeguard.
-                    if (!(Auth::check() && (int) $partner->user_id === (int) Auth::id())) {
-                        $partnerId = $partner->id;
-                    }
-                } else {
-                    $this->referralService->clearReferral();
-                }
-            } else {
-                $this->referralService->clearReferral();
-            }
-        }
-
-        if (!$program) {
-            $program = $product->partnershipPrograms->first();
-        }
-
-        $order = DB::transaction(function () use ($product, $program, $partnerId) {
-            $order = Order::create([
-                'order_number' => $this->generateOrderNumber(),
-                'customer_id' => Auth::id(),
-                'customer_name' => Auth::user()?->name,
-                'customer_email' => Auth::user()?->email,
-                'program_id' => $program?->id,
-                'partner_id' => $partnerId,
-                'subtotal' => $product->price,
-                'discount' => 0,
-                'total' => $product->price,
-                'currency' => $product->currency,
-                'status' => 'pending',
-            ]);
-
-            OrderItem::create([
-                'order_id' => $order->id,
-                'product_id' => $product->id,
-                'quantity' => 1,
-                'unit_price' => $product->price,
-                'total' => $product->price,
-            ]);
-
-            return $order;
-        });
-
-        $request->session()->put('checkout_order_id', $order->id);
-
-        return redirect()->route('checkout.show', ['orderId' => $order->id]);
+        return redirect()->route('checkout.show', ['product' => $product->id]);
     }
 
-    public function show(Request $request, $orderId)
+    public function show(Product $product)
     {
-        $order = Order::with(['items', 'items.product', 'partner.user', 'program'])
-            ->findOrFail($orderId);
+        $this->validatePurchasableProduct($product);
 
-        if (Auth::check()) {
-            if ($order->customer_id !== Auth::id()) {
-                abort(403);
-            }
-        } elseif ((int) $request->session()->get('checkout_order_id') !== (int) $order->id) {
-            abort(403);
-        }
-
-        return view('checkout.show', compact('order'));
+        return view('checkout.show', compact('product'));
     }
 
-    public function paystack(Request $request, $orderId)
+    /**
+     * Paystack creates the order when the customer actually clicks the Paystack
+     * payment button. Bank transfer does not use this method.
+     */
+    public function paystack(Request $request, Product $product)
     {
-        $order = Order::with('customer')->findOrFail($orderId);
-
-        if (Auth::check()) {
-            if ($order->customer_id !== Auth::id()) {
-                abort(403, 'Unauthorized');
-            }
-        } elseif ((int) $request->session()->get('checkout_order_id') !== (int) $order->id) {
-            abort(403, 'Unauthorized');
-        }
-
-        if ($order->status !== 'pending') {
-            return redirect()->route('order.post-payment', ['orderId' => $order->id]);
-        }
+        $this->validatePurchasableProduct($product);
 
         $validated = $request->validate([
             'customer_name' => ['required', 'string', 'max:255'],
@@ -146,11 +62,8 @@ class CheckoutController extends Controller
             'customer_phone' => ['nullable', 'string', 'max:30'],
         ]);
 
-        $order->update([
-            'customer_name' => $validated['customer_name'],
-            'customer_email' => $validated['customer_email'],
-            'customer_phone' => $validated['customer_phone'] ?? null,
-        ]);
+        $order = $this->checkoutOrderService->create($product, $validated);
+        $request->session()->put('checkout_order_id', $order->id);
 
         try {
             $transaction = $this->paystackService->initialize($order, $validated['customer_email']);
@@ -162,7 +75,7 @@ class CheckoutController extends Controller
                 'exception' => $e,
             ]);
 
-            return redirect()->route('checkout.show', ['orderId' => $order->id])
+            return redirect()->route('checkout.show', ['product' => $product->id])
                 ->with('error', 'We could not start the payment. Please try again.');
         }
     }
@@ -243,16 +156,9 @@ class CheckoutController extends Controller
     public function confirm(Request $request, $orderId)
     {
         $order = Order::findOrFail($orderId);
+        $this->authorizeOrder($request, $order);
 
-        if (Auth::check()) {
-            if ($order->customer_id !== Auth::id()) {
-                abort(403, 'Unauthorized');
-            }
-        } elseif ((int) $request->session()->get('checkout_order_id') !== (int) $order->id) {
-            abort(403, 'Unauthorized');
-        }
-
-        $request->validate([
+        $validated = $request->validate([
             'payment_method' => ['required', 'in:demo'],
             'customer_name' => ['required', 'string', 'max:255'],
             'customer_email' => ['required', 'email', 'max:255'],
@@ -264,9 +170,9 @@ class CheckoutController extends Controller
         }
 
         $order->update([
-            'customer_name' => $request->customer_name,
-            'customer_email' => $request->customer_email,
-            'customer_phone' => $request->customer_phone,
+            'customer_name' => $validated['customer_name'],
+            'customer_email' => $validated['customer_email'],
+            'customer_phone' => $validated['customer_phone'] ?? null,
             'status' => 'paid',
             'paid_at' => now(),
             'payment_reference' => $this->generatePaymentReference(),
@@ -297,7 +203,7 @@ class CheckoutController extends Controller
         $order = Order::with(['items.product', 'commissions'])->findOrFail($orderId);
 
         if ($order->status !== 'paid') {
-            return redirect()->route('checkout.show', ['orderId' => $order->id]);
+            return redirect()->route('checkout.show', ['product' => $order->items()->firstOrFail()->product_id]);
         }
 
         if (Auth::check() && $order->customer_id === Auth::id()) {
@@ -362,16 +268,27 @@ class CheckoutController extends Controller
         $this->referralService->clearReferral();
     }
 
-    private function generateOrderNumber()
+    private function validatePurchasableProduct(Product $product): void
     {
-        do {
-            $orderNumber = 'ORD-' . date('YmdHis') . '-' . Str::upper(Str::random(4));
-        } while (Order::where('order_number', $orderNumber)->exists());
+        if ($product->status !== 'active') {
+            abort(404, 'This product is not available for purchase.');
+        }
 
-        return $orderNumber;
+        if (Auth::check() && (int) $product->owner_id === (int) Auth::id() && Auth::user()->hasRole('program_manager')) {
+            abort(403, 'You cannot purchase a product owned by your business.');
+        }
     }
 
-    private function generatePaymentReference()
+    private function authorizeOrder(Request $request, Order $order): void
+    {
+        if (Auth::check()) {
+            abort_unless($order->customer_id === Auth::id(), 403);
+        } else {
+            abort_unless((int) $request->session()->get('checkout_order_id') === (int) $order->id, 403);
+        }
+    }
+
+    private function generatePaymentReference(): string
     {
         return 'PAY-' . Str::uuid();
     }
