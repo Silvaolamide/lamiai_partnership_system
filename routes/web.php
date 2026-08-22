@@ -67,8 +67,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/business/onboarding/{step}', [BusinessOnboardingController::class, 'store'])->name('business.onboarding.store');
     });
     Route::get('/network', [NetworkController::class, 'index'])->middleware('role:super_admin|program_manager|partner')->name('network.index');
-    // Purchasing is a capability, not a mutually-exclusive role. Partners/admins/businesses
-    // who are legitimate purchasers can all access their own paid purchases here.
     Route::get('/customer/dashboard', [CustomerDashboardController::class, 'index'])->name('customer.dashboard');
     Route::get('/my-products/{item}', [ProductAccessController::class, 'show'])->name('customer.product-access');
 });
@@ -99,5 +97,15 @@ Route::get('/', function(){ $programs=PartnershipProgram::query()->where('status
 Route::get('/dashboard', function(){ $user=request()->user(); if($user->hasRole('super_admin')) return redirect()->route('admin'); if($user->hasRole('program_manager')) return redirect()->route('business.dashboard'); if($user->hasRole('partner')) return redirect()->route('partner.dashboard'); if($user->hasRole('customer')) return redirect()->route('customer.dashboard'); return redirect()->route('home'); })->middleware(['auth','verified'])->name('dashboard');
 Route::middleware('auth')->group(function(){ Route::get('/profile',[ProfileController::class,'edit'])->name('profile.edit'); Route::patch('/profile',[ProfileController::class,'update'])->name('profile.update'); Route::delete('/profile',[ProfileController::class,'destroy'])->name('profile.destroy'); });
 Route::get('/product/{slug}',[ProductShowController::class,'show'])->name('product.show');
-Route::post('/checkout',[CheckoutController::class,'create'])->name('checkout.create'); Route::get('/checkout/{orderId}',[CheckoutController::class,'show'])->name('checkout.show'); Route::get('/checkout/{order}/bank-transfer',[ManualPaymentController::class,'show'])->name('checkout.bank-transfer'); Route::post('/checkout/{order}/bank-transfer',[ManualPaymentController::class,'submit'])->name('checkout.bank-transfer.submit'); Route::post('/checkout/{order}/dispute',[PaymentDisputeController::class,'store'])->name('checkout.payment-dispute'); Route::post('/checkout/{orderId}/paystack',[CheckoutController::class,'paystack'])->name('checkout.paystack'); Route::post('/checkout/{orderId}/confirm-demo',[CheckoutController::class,'confirm'])->name('checkout.confirm'); Route::get('/checkout/paystack/callback',[CheckoutController::class,'paystackCallback'])->name('checkout.paystack.callback'); Route::post('/webhooks/paystack',[CheckoutController::class,'paystackWebhook'])->name('webhooks.paystack'); Route::get('/order/{orderId}/post-payment',[CheckoutController::class,'postPayment'])->name('order.post-payment');
+Route::post('/checkout',[CheckoutController::class,'create'])->name('checkout.create');
+Route::get('/checkout/{product}',[CheckoutController::class,'show'])->name('checkout.show');
+Route::get('/checkout/{product}/bank-transfer',[ManualPaymentController::class,'show'])->name('checkout.bank-transfer');
+Route::post('/checkout/{product}/bank-transfer',[ManualPaymentController::class,'submit'])->name('checkout.bank-transfer.submit');
+Route::post('/checkout/{product}/paystack',[CheckoutController::class,'paystack'])->name('checkout.paystack');
+Route::post('/checkout/{order}/dispute',[PaymentDisputeController::class,'store'])->name('checkout.payment-dispute');
+Route::post('/checkout/{orderId}/confirm-demo',[CheckoutController::class,'confirm'])->name('checkout.confirm');
+Route::get('/checkout/paystack/callback',[CheckoutController::class,'paystackCallback'])->name('checkout.paystack.callback');
+Route::post('/webhooks/paystack',[CheckoutController::class,'paystackWebhook'])->name('webhooks.paystack');
+Route::get('/order/{orderId}/post-payment',[CheckoutController::class,'postPayment'])->name('order.post-payment');
+
 require __DIR__.'/auth.php';
