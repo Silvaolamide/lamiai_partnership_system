@@ -86,7 +86,15 @@
                     @if (app()->environment('local'))
                         <div class="my-5 rounded-xl border border-dashed border-amber-300 bg-amber-50 p-4">
                             <p class="text-xs font-black uppercase tracking-wider text-amber-700">Local testing</p>
-                            <p class="mt-1 text-sm text-amber-800">Demo payment is available on your local environment only.</p>
+                            <p class="mt-1 text-sm text-amber-800">Demo payment is available on your local environment only. It does not process real money.</p>
+                            <form action="{{ route('checkout.confirm', ['orderId' => $product->id]) }}" method="POST" class="mt-3 space-y-3">
+                                @csrf
+                                <input type="hidden" name="payment_method" value="demo">
+                                <input type="hidden" name="customer_name" value="{{ old('customer_name', Auth::user()?->name ?: 'Demo Customer') }}">
+                                <input type="hidden" name="customer_email" value="{{ old('customer_email', Auth::user()?->email ?: 'demo@example.com') }}">
+                                <input type="hidden" name="customer_phone" value="{{ old('customer_phone') }}">
+                                <button type="submit" class="w-full rounded-xl border-2 border-amber-500 bg-white px-5 py-3 font-black text-amber-800 hover:bg-amber-100">Complete demo payment</button>
+                            </form>
                         </div>
                     @endif
 
