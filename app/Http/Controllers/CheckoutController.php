@@ -57,20 +57,18 @@ class CheckoutController extends Controller
 
         try {
             $transaction = $this->paystackService->initialize($order, $validated['customer_email']);
-
             return redirect()->away($transaction['authorization_url']);
         } catch (\Throwable $e) {
             Log::error('Paystack initialization failed', ['order_id' => $order->id, 'exception' => $e]);
-
-            return redirect()->route('checkout.show', ['product' => $product->id])
-                ->with('error', 'We could not start the payment. Please try again.');
+            return redirect()->route('checkout.show', ['product' => $product->id])->with('error', 'We could not start the payment. Please try again.');
         }
     }
 
     /** Local-only demo payment. It also creates the order only when submitted. */
-    public function confirm(Request $request, Product $product)
+    public function confirm(Request $request, $orderId)
     {
         abort_unless(app()->environment('local'), 404);
+        $product = Product::findOrFail($orderId);
         $this->validatePurchasableProduct($product);
 
         $validated = $request->validate([
@@ -89,19 +87,14 @@ class CheckoutController extends Controller
         ]);
 
         try {
-            $this->commissionService->generateCommissionsForOrder(
-                $order->fresh(['partner', 'items.product'])
-            );
+            $this->commissionService->generateCommissionsForOrder($order->fresh(['partner', 'items.product']));
         } catch (\Throwable $e) {
             Log::error('Demo commission generation failed', ['order_id' => $order->id, 'exception' => $e]);
-
-            return redirect()->route('order.post-payment', ['orderId' => $order->id])
-                ->with('warning', 'Payment was recorded, but commission processing needs administrator attention.');
+            return redirect()->route('order.post-payment', ['orderId' => $order->id])->with('warning', 'Payment was recorded, but commission processing needs administrator attention.');
         }
 
         $request->session()->put('checkout_order_id', $order->id);
         $this->referralService->clearReferral();
-
         return $this->postPaymentRedirect($request, $order);
     }
 
@@ -115,13 +108,10 @@ class CheckoutController extends Controller
             $order = Order::where('payment_reference', $reference)->first();
             if (!$order) return redirect()->route('home')->with('error', 'We could not find the order for this payment.');
             $this->completePaystackOrder($order, $data);
-
             return $this->postPaymentRedirect($request, $order);
         } catch (\Throwable $e) {
             Log::error('Paystack callback verification failed', ['reference' => $reference, 'exception' => $e]);
-
-            return redirect()->route('home')
-                ->with('error', 'Payment verification failed. Please contact support if your account was charged.');
+            return redirect()->route('home')->with('error', 'Payment verification failed. Please contact support if your account was charged.');
         }
     }
 
@@ -129,9 +119,7 @@ class CheckoutController extends Controller
     {
         $payload = $request->getContent();
         $signature = $request->header('x-paystack-signature');
-        if (!$this->paystackService->validWebhookSignature($payload, $signature)) {
-            return response()->json(['message' => 'Invalid signature'], 401);
-        }
+        if (!$this->paystackService->validWebhookSignature($payload, $signature)) return response()->json(['message' => 'Invalid signature'], 401);
 
         $event = json_decode($payload, true);
         if (($event['event'] ?? null) !== 'charge.success') return response()->json(['message' => 'Event received']);
@@ -156,27 +144,18 @@ class CheckoutController extends Controller
     public function postPayment($orderId)
     {
         $order = Order::with(['items.product', 'commissions'])->findOrFail($orderId);
-
-        if ($order->status !== 'paid') {
-            return redirect()->route('checkout.show', ['product' => $order->items()->firstOrFail()->product_id]);
-        }
-
+        if ($order->status !== 'paid') return redirect()->route('checkout.show', ['product' => $order->items()->firstOrFail()->product_id]);
         if (Auth::check() && $order->customer_id === Auth::id()) return redirect()->route('customer.dashboard');
 
         session()->put('pending_customer_order_id', $order->id);
-
-        return redirect()->route('customer.login', ['order' => $order->id])
-            ->with('status', 'Payment successful. Sign in or create your customer account to access your purchase.');
+        return redirect()->route('customer.login', ['order' => $order->id])->with('status', 'Payment successful. Sign in or create your customer account to access your purchase.');
     }
 
     private function postPaymentRedirect(Request $request, Order $order)
     {
         if (Auth::check() && $order->customer_id === Auth::id()) return redirect()->route('customer.dashboard');
-
         $request->session()->put('pending_customer_order_id', $order->id);
-
-        return redirect()->route('customer.login', ['order' => $order->id])
-            ->with('status', 'Payment successful. Sign in or create your customer account to access your purchase.');
+        return redirect()->route('customer.login', ['order' => $order->id])->with('status', 'Payment successful. Sign in or create your customer account to access your purchase.');
     }
 
     private function completePaystackOrder(Order $order, array $data): void
@@ -187,24 +166,18 @@ class CheckoutController extends Controller
         $expectedAmount = (int) round(((float) $order->total) * 100);
         $actualAmount = (int) ($data['amount'] ?? 0);
         $actualCurrency = strtoupper((string) ($data['currency'] ?? ''));
-        if ($actualAmount !== $expectedAmount || $actualCurrency !== strtoupper($order->currency)) {
-            throw new \RuntimeException('Paystack amount or currency does not match the order.');
-        }
+        if ($actualAmount !== $expectedAmount || $actualCurrency !== strtoupper($order->currency)) throw new \RuntimeException('Paystack amount or currency does not match the order.');
 
         DB::transaction(function () use ($order, $data) {
             $lockedOrder = Order::lockForUpdate()->findOrFail($order->id);
             if ($lockedOrder->status === 'paid') return;
-
             $lockedOrder->update([
                 'status' => 'paid',
                 'paid_at' => $data['paid_at'] ?? now(),
                 'payment_provider' => 'paystack',
                 'payment_reference' => $data['reference'],
             ]);
-
-            $this->commissionService->generateCommissionsForOrder(
-                $lockedOrder->fresh(['partner', 'items.product'])
-            );
+            $this->commissionService->generateCommissionsForOrder($lockedOrder->fresh(['partner', 'items.product']));
         });
 
         $this->referralService->clearReferral();
@@ -213,9 +186,7 @@ class CheckoutController extends Controller
     private function validatePurchasableProduct(Product $product): void
     {
         if ($product->status !== 'active') abort(404, 'This product is not available for purchase.');
-        if (Auth::check() && (int) $product->owner_id === (int) Auth::id() && Auth::user()->hasRole('program_manager')) {
-            abort(403, 'You cannot purchase a product owned by your business.');
-        }
+        if (Auth::check() && (int) $product->owner_id === (int) Auth::id() && Auth::user()->hasRole('program_manager')) abort(403, 'You cannot purchase a product owned by your business.');
     }
 
     private function generatePaymentReference(): string
