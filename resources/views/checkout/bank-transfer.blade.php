@@ -27,6 +27,12 @@
                         @if(session('bank_transfer_order_number'))
                             <p class="mt-3 font-semibold text-emerald-900">Order number: <span class="font-mono">{{ session('bank_transfer_order_number') }}</span></p>
                         @endif
+
+                        @auth
+                            <a href="{{ route('customer.dashboard') }}" class="mt-5 inline-flex items-center justify-center rounded-xl bg-emerald-600 px-5 py-3 font-black text-white shadow-sm transition hover:bg-emerald-700">
+                                Go to My Dashboard →
+                            </a>
+                        @endauth
                     </div>
                 </div>
             </section>
