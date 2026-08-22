@@ -68,7 +68,9 @@ class ManualPaymentController extends Controller
 
         return redirect()
             ->route('checkout.bank-transfer', ['product' => $product->id])
-            ->with('success', 'Your order has been placed and your payment proof has been submitted. Our payment team will verify the transfer before marking the order as paid.');
+            ->with('success', 'Your order has been placed and your payment proof has been submitted. Our payment team will verify the transfer before marking the order as paid.')
+            ->with('bank_transfer_submitted', true)
+            ->with('bank_transfer_order_number', $order->order_number);
     }
 
     private function validateProduct(Product $product): void
