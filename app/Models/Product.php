@@ -73,4 +73,9 @@ class Product extends Model
     {
         return $this->belongsToMany(PartnershipProgram::class, 'program_products', 'product_id', 'program_id');
     }
+
+    public function orderItems()
+    {
+        return $this->hasMany(OrderItem::class);
+    }
 }
