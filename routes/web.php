@@ -13,6 +13,7 @@ use App\Http\Controllers\Admin\PaymentController as AdminPaymentController;
 use App\Http\Controllers\Admin\PaymentDisputeController as AdminPaymentDisputeController;
 use App\Http\Controllers\Admin\RegistrationController as AdminRegistrationController;
 use App\Http\Controllers\Admin\SettingsController as AdminSettingsController;
+use App\Http\Controllers\Admin\UserManagementController as AdminUserManagementController;
 use App\Http\Controllers\BusinessDashboardController;
 use App\Http\Controllers\BusinessOnboardingController;
 use App\Http\Controllers\BusinessPartnerApprovalController;
@@ -76,6 +77,13 @@ Route::get('/business/start', [BusinessOnboardingController::class, 'start'])->n
 Route::middleware(['auth', 'role:super_admin'])->prefix('admin')->group(function () {
     Route::get('/', [AdminDashboardController::class, 'index'])->name('admin');
     Route::get('/realtime/sales', [AdminDashboardController::class, 'realtimeSales'])->name('admin.realtime.sales');
+    Route::get('/users', [AdminUserManagementController::class, 'index'])->name('admin.users.index');
+    Route::get('/users/{user}', [AdminUserManagementController::class, 'show'])->name('admin.users.show');
+    Route::get('/users/{user}/edit', [AdminUserManagementController::class, 'edit'])->name('admin.users.edit');
+    Route::put('/users/{user}', [AdminUserManagementController::class, 'update'])->name('admin.users.update');
+    Route::patch('/users/{user}/verify-email', [AdminUserManagementController::class, 'verifyEmail'])->name('admin.users.verify-email');
+    Route::patch('/users/{user}/repair-registration', [AdminUserManagementController::class, 'repairRegistration'])->name('admin.users.repair-registration');
+    Route::delete('/users/{user}', [AdminUserManagementController::class, 'destroy'])->name('admin.users.destroy');
     Route::get('/analytics/businesses', [SuperAdminAnalyticsController::class, 'businesses'])->name('admin.analytics.businesses');
     Route::get('/analytics/businesses/{business}', [SuperAdminAnalyticsController::class, 'business'])->name('admin.analytics.business');
     Route::get('/analytics/businesses/{business}/partners/{programPartner}', [SuperAdminAnalyticsController::class, 'partner'])->name('admin.analytics.partner');
