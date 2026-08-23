@@ -12,25 +12,46 @@ class PartnerReferralShowcaseController extends Controller
         $partner = ProgramPartner::query()
             ->where('partner_code', $partnerCode)
             ->where('status', 'active')
+            ->with(['user'])
+            ->firstOrFail();
+
+        // The referral code identifies the originating program/partner record,
+        // but the storefront should expose products from every active program
+        // this partner is subscribed to.
+        $subscribedPrograms = ProgramPartner::query()
+            ->where('user_id', $partner->user_id)
+            ->where('status', 'active')
             ->with([
-                'user',
                 'program' => fn ($query) => $query->where('status', 'active')->with([
                     'products' => fn ($productQuery) => $productQuery->where('status', 'active')->orderBy('name'),
                     'commissionRules' => fn ($rules) => $rules->where('status', true)->where('event', 'sale')->orderBy('level')->orderByDesc('priority'),
                 ]),
             ])
-            ->firstOrFail();
+            ->get()
+            ->filter(fn ($programPartner) => $programPartner->program)
+            ->values();
 
-        $program = $partner->program;
+        $program = $partner->program()->where('status', 'active')->with([
+            'products' => fn ($query) => $query->where('status', 'active')->orderBy('name'),
+            'commissionRules' => fn ($rules) => $rules->where('status', true)->where('event', 'sale')->orderBy('level')->orderByDesc('priority'),
+        ])->first();
+
         abort_unless($program, 404);
 
+        // Preserve the originating program for referral attribution. The
+        // storefront product catalogue is broader than this one program.
         $request->session()->put([
             'referral_program_partner_id' => $partner->id,
             'referral_program_id' => $partner->program_id,
             'referral_created_at' => now()->timestamp,
         ]);
 
-        $products = $program->products;
+        $products = $subscribedPrograms
+            ->flatMap(fn ($programPartner) => $programPartner->program->products)
+            ->unique('id')
+            ->sortBy('name')
+            ->values();
+
         $rules = $program->commissionRules;
         $directRule = $rules->firstWhere('level', 1);
         $recruiterRule = $rules->firstWhere('level', 2);
@@ -38,6 +59,7 @@ class PartnerReferralShowcaseController extends Controller
         return view('partner.referral-showcase', [
             'partner' => $partner,
             'program' => $program,
+            'subscribedPrograms' => $subscribedPrograms,
             'products' => $products,
             'directRule' => $directRule,
             'recruiterRule' => $recruiterRule,
