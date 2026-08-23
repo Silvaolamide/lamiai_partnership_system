@@ -20,8 +20,6 @@ class NetworkController extends Controller
         $selectedPartnerId = $request->integer('partner');
 
         if ($user->hasRole('super_admin')) {
-            // Super admins can inspect the complete recruitment network across
-            // every business/program on the platform.
             $programs = PartnershipProgram::query()
                 ->with('owner:id,name,business_name')
                 ->orderBy('name')
@@ -37,9 +35,6 @@ class NetworkController extends Controller
             $title = 'Partner Recruitment Network';
             $subtitle = 'See every affiliate and the partners they have recruited across the platform.';
         } elseif ($user->hasRole('program_manager')) {
-            // Businesses can see every partner participating in programs they
-            // own. They can also drill into any partner and make that partner
-            // the root of the displayed recruitment tree.
             $programs = PartnershipProgram::query()
                 ->where('owner_id', $user->id)
                 ->with('owner:id,name,business_name')
@@ -57,8 +52,6 @@ class NetworkController extends Controller
             $title = 'Affiliate Recruitment Network';
             $subtitle = 'See every affiliate in your programs and open any partner to view the team they recruited.';
         } else {
-            // A partner can only see their own recruitment tree. Start with
-            // their memberships, then recursively include descendants only.
             $myPartners = ProgramPartner::query()
                 ->where('user_id', $user->id)
                 ->with('program.owner:id,name,business_name')
@@ -101,15 +94,9 @@ class NetworkController extends Controller
 
             $title = 'My Recruitment Network';
             $subtitle = 'Track the affiliates you recruited and the teams they are building.';
-
-            // Partners are deliberately not allowed to choose an arbitrary
-            // partner as the root. Their view remains their own downline.
             $selectedPartnerId = null;
         }
 
-        // For super admins and business managers, validate the requested root
-        // against the already-authorized partner collection. This prevents a
-        // crafted query string from exposing another business's network.
         $selectedPartner = null;
         if ($selectedPartnerId && !$user->hasRole('partner')) {
             $selectedPartner = $partners->firstWhere('id', $selectedPartnerId);
@@ -123,8 +110,6 @@ class NetworkController extends Controller
             if ($selectedPartner && (int) $selectedPartner->program_id === (int) $program->id) {
                 $roots = collect([$selectedPartner]);
             } elseif ($selectedPartner) {
-                // When a business/admin selects a partner, only that partner's
-                // program tree is shown rather than mixing unrelated programs.
                 return null;
             } else {
                 $roots = $programPartners->filter(function (ProgramPartner $partner) use ($user) {
@@ -138,19 +123,35 @@ class NetworkController extends Controller
 
             return [
                 'program' => $program,
-                'partners_count' => $programPartners->count(),
+                // This is intentionally a program-enrollment count. The
+                // overall totals below count unique people.
+                'partners_count' => $programPartners->pluck('user_id')->filter()->unique()->count(),
                 'roots' => $roots,
                 'children' => $children,
                 'selected_partner' => $selectedPartner,
             ];
         })->filter(fn ($tree) => $tree !== null && $tree['partners_count'] > 0)->values();
 
+        // Network rows are program memberships. Deduplicate people for the
+        // headline metrics so a partner in multiple programs is still one
+        // person in the network totals.
+        $uniquePartnerUserIds = $partners->pluck('user_id')->filter()->unique();
+        $recruitingParentIds = ProgramPartner::query()
+            ->whereIn('parent_partner_id', $partners->pluck('id'))
+            ->pluck('parent_partner_id')
+            ->unique();
+        $recruiterUserIds = $partners
+            ->whereIn('id', $recruitingParentIds)
+            ->pluck('user_id')
+            ->filter()
+            ->unique();
+
         return view('network.index', [
             'trees' => $trees,
             'title' => $title,
             'subtitle' => $subtitle,
-            'totalPartners' => $partners->count(),
-            'totalRecruiters' => $partners->filter(fn (ProgramPartner $partner) => $partner->childPartners()->exists())->count(),
+            'totalPartners' => $uniquePartnerUserIds->count(),
+            'totalRecruiters' => $recruiterUserIds->count(),
             'selectedPartner' => $selectedPartner,
         ]);
     }
