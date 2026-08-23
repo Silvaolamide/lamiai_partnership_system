@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Order;
 use App\Models\PlatformPaymentSetting;
 use App\Models\Product;
+use App\Models\User;
 use App\Services\CheckoutOrderService;
 use App\Services\CommissionService;
 use App\Services\PaystackService;
@@ -12,190 +13,95 @@ use App\Services\ReferralService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class CheckoutController extends Controller
 {
-    public function __construct(
-        protected ReferralService $referralService,
-        protected CommissionService $commissionService,
-        protected PaystackService $paystackService,
-        protected CheckoutOrderService $checkoutOrderService,
-    ) {}
+    public function __construct(protected ReferralService $referralService, protected CommissionService $commissionService, protected PaystackService $paystackService, protected CheckoutOrderService $checkoutOrderService) {}
 
-    public function create(Request $request)
-    {
-        $validated = $request->validate(['product_id' => ['required', 'exists:products,id']]);
-        $product = Product::findOrFail($validated['product_id']);
-        $this->validatePurchasableProduct($product);
-        $request->session()->put('checkout_product_id', $product->id);
+    public function create(Request $request) { $validated = $request->validate(['product_id' => ['required', 'exists:products,id']]); $product = Product::findOrFail($validated['product_id']); $this->validatePurchasableProduct($product); $request->session()->put('checkout_product_id', $product->id); return redirect()->route('checkout.show', ['product' => $product->id]); }
+    public function show(Product $product) { $this->validatePurchasableProduct($product); return view('checkout.show', ['product' => $product, 'paymentSettings' => PlatformPaymentSetting::current()]); }
 
-        return redirect()->route('checkout.show', ['product' => $product->id]);
-    }
-
-    public function show(Product $product)
-    {
-        $this->validatePurchasableProduct($product);
-
-        return view('checkout.show', [
-            'product' => $product,
-            'paymentSettings' => PlatformPaymentSetting::current(),
-        ]);
-    }
-
-    /** Paystack creates the order when the customer clicks the payment button. */
     public function paystack(Request $request, Product $product)
     {
         $this->validatePurchasableProduct($product);
-
-        if (!Auth::check()) {
-            return redirect()->route('customer.login', ['intended' => route('checkout.show', ['product' => $product->id])])
-                ->with('status', 'Please sign in or create a customer account to pay with Paystack.');
-        }
-
-        $order = $this->checkoutOrderService->create($product, [
-            'customer_name' => Auth::user()->name,
-            'customer_email' => Auth::user()->email,
-            'customer_phone' => Auth::user()->phone,
-        ]);
-        $request->session()->put('checkout_order_id', $order->id);
-
-        try {
-            $transaction = $this->paystackService->initialize($order, Auth::user()->email);
-            return redirect()->away($transaction['authorization_url']);
-        } catch (\Throwable $e) {
-            Log::error('Paystack initialization failed', ['order_id' => $order->id, 'exception' => $e]);
-            return redirect()->route('checkout.show', ['product' => $product->id])->with('error', 'We could not start the payment. Please try again.');
-        }
+        $customer = $request->validate(['customer_name' => ['required', 'string', 'max:255'], 'customer_email' => ['required', 'email', 'max:255'], 'customer_phone' => ['nullable', 'string', 'max:30']]);
+        if (Auth::check()) $customer = ['customer_name' => Auth::user()->name, 'customer_email' => Auth::user()->email, 'customer_phone' => Auth::user()->phone];
+        $order = $this->checkoutOrderService->create($product, $customer); $request->session()->put('checkout_order_id', $order->id);
+        try { $transaction = $this->paystackService->initialize($order, $customer['customer_email']); return redirect()->away($transaction['authorization_url']); }
+        catch (\Throwable $e) { Log::error('Paystack initialization failed', ['order_id' => $order->id, 'exception' => $e]); return redirect()->route('checkout.show', ['product' => $product->id])->with('error', 'We could not start the payment. Please try again.')->withInput(); }
     }
 
     public function confirm(Request $request, $orderId)
     {
-        abort_unless(app()->environment('local'), 404);
-        $product = Product::findOrFail($orderId);
-        $this->validatePurchasableProduct($product);
-
-        $validated = $request->validate([
-            'payment_method' => ['required', 'in:demo'],
-            'customer_name' => ['required', 'string', 'max:255'],
-            'customer_email' => ['required', 'email', 'max:255'],
-            'customer_phone' => ['nullable', 'string', 'max:30'],
-        ]);
-
-        $order = $this->checkoutOrderService->create($product, $validated);
-        $order->update([
-            'status' => 'paid',
-            'paid_at' => now(),
-            'payment_reference' => $this->generatePaymentReference(),
-            'payment_provider' => 'demo',
-        ]);
-
-        try {
-            $this->commissionService->generateCommissionsForOrder($order->fresh(['partner', 'items.product']));
-        } catch (\Throwable $e) {
-            Log::error('Demo commission generation failed', ['order_id' => $order->id, 'exception' => $e]);
-            return redirect()->route('order.post-payment', ['orderId' => $order->id])->with('warning', 'Payment was recorded, but commission processing needs administrator attention.');
-        }
-
-        $request->session()->put('checkout_order_id', $order->id);
-        $this->referralService->clearReferral();
-        return $this->postPaymentRedirect($request, $order);
+        abort_unless(app()->environment('local'), 404); $product = Product::findOrFail($orderId); $this->validatePurchasableProduct($product);
+        $validated = $request->validate(['payment_method' => ['required', 'in:demo'], 'customer_name' => ['required', 'string', 'max:255'], 'customer_email' => ['required', 'email', 'max:255'], 'customer_phone' => ['nullable', 'string', 'max:30']]);
+        $order = $this->checkoutOrderService->create($product, $validated); $order->update(['status' => 'paid', 'paid_at' => now(), 'payment_reference' => $this->generatePaymentReference(), 'payment_provider' => 'demo']);
+        try { $this->commissionService->generateCommissionsForOrder($order->fresh(['partner', 'items.product'])); }
+        catch (\Throwable $e) { Log::error('Demo commission generation failed', ['order_id' => $order->id, 'exception' => $e]); return redirect()->route('order.post-payment', ['orderId' => $order->id])->with('warning', 'Payment was recorded, but commission processing needs administrator attention.'); }
+        $request->session()->put('checkout_order_id', $order->id); $this->referralService->clearReferral(); return $this->postPaymentRedirect($request, $order);
     }
 
     public function paystackCallback(Request $request)
     {
-        $reference = $request->query('reference');
-        if (!$reference) return redirect()->route('home')->with('error', 'Payment reference was not supplied.');
-
+        $reference = $request->query('reference'); if (!$reference) return redirect()->route('home')->with('error', 'Payment reference was not supplied.');
         try {
-            $data = $this->paystackService->verify($reference);
-            $order = Order::where('payment_reference', $reference)->first();
+            $data = $this->paystackService->verify($reference); $order = Order::where('payment_reference', $reference)->first();
             if (!$order) return redirect()->route('home')->with('error', 'We could not find the order for this payment.');
-            $this->completePaystackOrder($order, $data);
+            $this->completePaystackOrder($order, $data); $order->refresh();
+            if (!$request->user() && $order->customer_id) { Auth::loginUsingId($order->customer_id); $request->session()->regenerate(); }
             return $this->postPaymentRedirect($request, $order);
-        } catch (\Throwable $e) {
-            Log::error('Paystack callback verification failed', ['reference' => $reference, 'exception' => $e]);
-            return redirect()->route('home')->with('error', 'Payment verification failed. Please contact support if your account was charged.');
-        }
+        } catch (\Throwable $e) { Log::error('Paystack callback verification failed', ['reference' => $reference, 'exception' => $e]); return redirect()->route('home')->with('error', 'Payment verification failed. Please contact support if your account was charged.'); }
     }
 
     public function paystackWebhook(Request $request)
     {
-        $payload = $request->getContent();
-        $signature = $request->header('x-paystack-signature');
-        if (!$this->paystackService->validWebhookSignature($payload, $signature)) return response()->json(['message' => 'Invalid signature'], 401);
-
-        $event = json_decode($payload, true);
-        if (($event['event'] ?? null) !== 'charge.success') return response()->json(['message' => 'Event received']);
-
-        $data = $event['data'] ?? [];
-        $reference = $data['reference'] ?? null;
-        if (!$reference) return response()->json(['message' => 'Missing transaction reference'], 400);
-
-        $order = Order::where('payment_reference', $reference)->first();
-        if (!$order) return response()->json(['message' => 'Order not found'], 404);
-
-        try {
-            $this->completePaystackOrder($order, $data);
-        } catch (\Throwable $e) {
-            Log::error('Paystack webhook order completion failed', ['order_id' => $order->id, 'reference' => $reference, 'exception' => $e]);
-            return response()->json(['message' => 'Unable to process event'], 500);
-        }
-
+        $payload = $request->getContent(); $signature = $request->header('x-paystack-signature'); if (!$this->paystackService->validWebhookSignature($payload, $signature)) return response()->json(['message' => 'Invalid signature'], 401);
+        $event = json_decode($payload, true); if (($event['event'] ?? null) !== 'charge.success') return response()->json(['message' => 'Event received']);
+        $data = $event['data'] ?? []; $reference = $data['reference'] ?? null; if (!$reference) return response()->json(['message' => 'Missing transaction reference'], 400);
+        $order = Order::where('payment_reference', $reference)->first(); if (!$order) return response()->json(['message' => 'Order not found'], 404);
+        try { $this->completePaystackOrder($order, $data); } catch (\Throwable $e) { Log::error('Paystack webhook order completion failed', ['order_id' => $order->id, 'reference' => $reference, 'exception' => $e]); return response()->json(['message' => 'Unable to process event'], 500); }
         return response()->json(['message' => 'Event processed']);
     }
 
     public function postPayment($orderId)
     {
-        $order = Order::with(['items.product', 'commissions'])->findOrFail($orderId);
-        if ($order->status !== 'paid') return redirect()->route('checkout.show', ['product' => $order->items()->firstOrFail()->product_id]);
+        $order = Order::with(['items.product', 'commissions'])->findOrFail($orderId); if ($order->status !== 'paid') return redirect()->route('checkout.show', ['product' => $order->items()->firstOrFail()->product_id]);
         if (Auth::check() && $order->customer_id === Auth::id()) return redirect()->route('customer.dashboard');
-
-        session()->put('pending_customer_order_id', $order->id);
-        return redirect()->route('customer.login', ['order' => $order->id])->with('status', 'Payment successful. Sign in or create your customer account to access your purchase.');
+        session()->put('pending_customer_order_id', $order->id); return redirect()->route('customer.login', ['order' => $order->id])->with('status', 'Payment successful. Sign in to access your purchase.');
     }
 
     private function postPaymentRedirect(Request $request, Order $order)
     {
         if (Auth::check() && $order->customer_id === Auth::id()) return redirect()->route('customer.dashboard');
-        $request->session()->put('pending_customer_order_id', $order->id);
-        return redirect()->route('customer.login', ['order' => $order->id])->with('status', 'Payment successful. Sign in or create your customer account to access your purchase.');
+        $request->session()->put('pending_customer_order_id', $order->id); return redirect()->route('customer.login', ['order' => $order->id])->with('status', 'Payment successful. Sign in to access your purchase.');
     }
 
     private function completePaystackOrder(Order $order, array $data): void
     {
-        if ($order->status === 'paid') return;
+        if ($order->status === 'paid') { $this->ensureCustomerForPaidOrder($order); return; }
         if (($data['status'] ?? null) !== 'success') throw new \RuntimeException('Paystack transaction was not successful.');
-
-        $expectedAmount = (int) round(((float) $order->total) * 100);
-        $actualAmount = (int) ($data['amount'] ?? 0);
-        $actualCurrency = strtoupper((string) ($data['currency'] ?? ''));
+        $expectedAmount = (int) round(((float) $order->total) * 100); $actualAmount = (int) ($data['amount'] ?? 0); $actualCurrency = strtoupper((string) ($data['currency'] ?? ''));
         if ($actualAmount !== $expectedAmount || $actualCurrency !== strtoupper($order->currency)) throw new \RuntimeException('Paystack amount or currency does not match the order.');
-
         DB::transaction(function () use ($order, $data) {
             $lockedOrder = Order::lockForUpdate()->findOrFail($order->id);
-            if ($lockedOrder->status === 'paid') return;
-            $lockedOrder->update([
-                'status' => 'paid',
-                'paid_at' => $data['paid_at'] ?? now(),
-                'payment_provider' => 'paystack',
-                'payment_reference' => $data['reference'],
-            ]);
-            $this->commissionService->generateCommissionsForOrder($lockedOrder->fresh(['partner', 'items.product']));
+            if ($lockedOrder->status === 'paid') { $this->ensureCustomerForPaidOrder($lockedOrder); return; }
+            $lockedOrder->update(['status' => 'paid', 'paid_at' => $data['paid_at'] ?? now(), 'payment_provider' => 'paystack', 'payment_reference' => $data['reference']]);
+            $this->ensureCustomerForPaidOrder($lockedOrder); $this->commissionService->generateCommissionsForOrder($lockedOrder->fresh(['partner', 'items.product']));
         });
-
         $this->referralService->clearReferral();
     }
 
-    private function validatePurchasableProduct(Product $product): void
+    private function ensureCustomerForPaidOrder(Order $order): void
     {
-        if ($product->status !== 'active') abort(404, 'This product is not available for purchase.');
-        if (Auth::check() && (int) $product->owner_id === (int) Auth::id() && Auth::user()->hasRole('program_manager')) abort(403, 'You cannot purchase a product owned by your business.');
+        if ($order->customer_id) return; $email = strtolower(trim((string) $order->customer_email)); if ($email === '') return;
+        if (User::whereRaw('LOWER(email) = ?', [$email])->exists()) return;
+        $user = User::create(['name' => $order->customer_name ?: 'AIPM Customer', 'email' => $email, 'registration_type' => 'customer', 'password' => Hash::make(Str::random(48)), 'email_verified_at' => now()]);
+        $user->assignRole('customer'); $order->update(['customer_id' => $user->id, 'customer_name' => $user->name]);
     }
 
-    private function generatePaymentReference(): string
-    {
-        return 'PAY-' . Str::uuid();
-    }
+    private function validatePurchasableProduct(Product $product): void { if ($product->status !== 'active') abort(404, 'This product is not available for purchase.'); if (Auth::check() && (int) $product->owner_id === (int) Auth::id() && Auth::user()->hasRole('program_manager')) abort(403, 'You cannot purchase a product owned by your business.'); }
+    private function generatePaymentReference(): string { return 'PAY-' . Str::uuid(); }
 }
