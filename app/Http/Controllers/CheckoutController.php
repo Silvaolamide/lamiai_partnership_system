@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Order;
+use App\Models\PlatformPaymentSetting;
 use App\Models\Product;
 use App\Services\CheckoutOrderService;
 use App\Services\CommissionService;
@@ -23,7 +24,6 @@ class CheckoutController extends Controller
         protected CheckoutOrderService $checkoutOrderService,
     ) {}
 
-    /** Start checkout without creating an order. */
     public function create(Request $request)
     {
         $validated = $request->validate(['product_id' => ['required', 'exists:products,id']]);
@@ -38,7 +38,10 @@ class CheckoutController extends Controller
     {
         $this->validatePurchasableProduct($product);
 
-        return view('checkout.show', compact('product'));
+        return view('checkout.show', [
+            'product' => $product,
+            'paymentSettings' => PlatformPaymentSetting::current(),
+        ]);
     }
 
     /** Paystack creates the order when the customer clicks the payment button. */
@@ -46,17 +49,20 @@ class CheckoutController extends Controller
     {
         $this->validatePurchasableProduct($product);
 
-        $validated = $request->validate([
-            'customer_name' => ['required', 'string', 'max:255'],
-            'customer_email' => ['required', 'email', 'max:255'],
-            'customer_phone' => ['nullable', 'string', 'max:30'],
-        ]);
+        if (!Auth::check()) {
+            return redirect()->route('customer.login', ['intended' => route('checkout.show', ['product' => $product->id])])
+                ->with('status', 'Please sign in or create a customer account to pay with Paystack.');
+        }
 
-        $order = $this->checkoutOrderService->create($product, $validated);
+        $order = $this->checkoutOrderService->create($product, [
+            'customer_name' => Auth::user()->name,
+            'customer_email' => Auth::user()->email,
+            'customer_phone' => Auth::user()->phone,
+        ]);
         $request->session()->put('checkout_order_id', $order->id);
 
         try {
-            $transaction = $this->paystackService->initialize($order, $validated['customer_email']);
+            $transaction = $this->paystackService->initialize($order, Auth::user()->email);
             return redirect()->away($transaction['authorization_url']);
         } catch (\Throwable $e) {
             Log::error('Paystack initialization failed', ['order_id' => $order->id, 'exception' => $e]);
@@ -64,7 +70,6 @@ class CheckoutController extends Controller
         }
     }
 
-    /** Local-only demo payment. It also creates the order only when submitted. */
     public function confirm(Request $request, $orderId)
     {
         abort_unless(app()->environment('local'), 404);
