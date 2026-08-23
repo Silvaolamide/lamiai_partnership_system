@@ -16,14 +16,19 @@
 </div>
 
 <div class="bg-white border rounded-2xl p-6 shadow-soft">
-    <h2 class="font-black text-lg">Partner approval</h2>
-    <label class="mt-5 flex items-start gap-3 rounded-2xl border border-violet-100 bg-violet-50/60 p-4 cursor-pointer">
-        <input type="checkbox" name="partner_business_approval_required" value="1" @checked(old('partner_business_approval_required', $program->settings['partner_business_approval_required'] ?? false)) class="mt-1 rounded text-violet-600">
-        <span>
-            <b class="block">Require my business to approve partners</b>
-            <small class="block text-slate-500 mt-1">When enabled, a new partner must receive approval from your business in addition to any platform approval required by the Super Admin. Email verification remains required.</small>
-        </span>
-    </label>
+    <h2 class="font-black text-lg">Partner application policy</h2>
+    <p class="mt-1 text-sm text-slate-500">Choose the approval required to join this program. Email verification remains required for partner access.</p>
+    <div class="mt-5 space-y-3">
+        <label class="flex items-start gap-3 rounded-2xl border border-emerald-100 bg-emerald-50/60 p-4 cursor-pointer">
+            <input type="checkbox" name="partner_business_approval_required" value="1" @checked(old('partner_business_approval_required', $program->settings['partner_business_approval_required'] ?? false)) class="mt-1 rounded text-emerald-600">
+            <span><b class="block">Require my business to approve partners</b><small class="block text-slate-500 mt-1">Applications stay pending until your business approves them. Use this when you want to vet partners before activation.</small></span>
+        </label>
+        <label class="flex items-start gap-3 rounded-2xl border border-violet-100 bg-violet-50/60 p-4 cursor-pointer">
+            <input type="checkbox" name="partner_super_admin_approval_required" value="1" @checked(old('partner_super_admin_approval_required', $program->settings['partner_super_admin_approval_required'] ?? false)) class="mt-1 rounded text-violet-600">
+            <span><b class="block">Require Super Admin approval</b><small class="block text-slate-500 mt-1">Applications stay pending until a Super Admin approves them. Leave this off for faster adoption.</small></span>
+        </label>
+        <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600"><b>Adoption-first default:</b> when both options are off, a verified existing partner is activated immediately after joining this program.</div>
+    </div>
 </div>
 
 <div class="bg-white border rounded-2xl p-6 shadow-soft">
