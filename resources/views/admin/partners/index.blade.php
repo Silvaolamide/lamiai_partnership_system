@@ -22,7 +22,7 @@
 <td class="p-4 text-center"><div class="font-black">{{ $partner->admin_metrics['active_programs'] }}</div><div class="text-xs text-slate-400">active</div>@if($partner->admin_metrics['pending_programs'])<div class="text-xs font-bold text-amber-600 mt-1">{{ $partner->admin_metrics['pending_programs'] }} pending</div>@endif</td>
 <td class="p-4 text-center font-black">{{ $partner->admin_metrics['recruits'] }}</td>
 <td class="p-4 text-right font-black">₦{{ number_format($partner->admin_metrics['sales'],2) }}<small class="block text-xs text-slate-400">{{ $partner->admin_metrics['orders'] }} orders</small></td>
-<td class="p-4 text-right font-black text-violet-700">₦{{ number_format($partner->programPartners->sum(fn($membership) => $membership->commissions()->where('status','!=','reversed')->sum('commission_amount')),2) }}</td>
+<td class="p-4 text-right font-black text-violet-700">₦{{ number_format($partner->admin_metrics['earnings'],2) }}</td>
 </tr>
 @empty<tr><td colspan="7" class="p-10 text-center text-slate-400">No partners found.</td></tr>@endforelse</tbody></table></div><div class="p-4">{{$partners->links()}}</div></div>
 </div></div></x-app-layout>
