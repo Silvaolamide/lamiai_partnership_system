@@ -21,53 +21,65 @@
         <section class="mb-6 rounded-2xl border-2 border-emerald-200 bg-emerald-50 p-6 shadow-sm">
             <div class="flex items-start gap-4">
                 <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-xl font-black text-white">✓</div>
-                <div>
+                <div class="min-w-0 flex-1">
                     <h2 class="text-lg font-black text-emerald-900">Payment proof submitted successfully</h2>
                     <p class="mt-1 leading-6 text-emerald-800">{{ session('success') }}</p>
 
                     @if(session('bank_transfer_account_created'))
-                        <p class="mt-4 font-bold text-emerald-900">Your customer account has been created.</p>
-                        @if(session('bank_transfer_password_email_sent'))
-                            @php
-                                $customerEmail = session('bank_transfer_customer_email');
-                                $emailDomain = $customerEmail && str_contains($customerEmail, '@')
-                                    ? strtolower(substr(strrchr($customerEmail, '@'), 1))
-                                    : null;
+                        <div class="mt-5 rounded-2xl border border-emerald-200 bg-white p-5">
+                            <p class="font-black text-slate-900">Your customer account has been created.</p>
 
-                                $providerLinks = [
-                                    'gmail.com' => ['https://mail.google.com/', 'Open Gmail'],
-                                    'googlemail.com' => ['https://mail.google.com/', 'Open Gmail'],
-                                    'outlook.com' => ['https://outlook.live.com/mail/', 'Open Outlook'],
-                                    'hotmail.com' => ['https://outlook.live.com/mail/', 'Open Outlook'],
-                                    'live.com' => ['https://outlook.live.com/mail/', 'Open Outlook'],
-                                    'msn.com' => ['https://outlook.live.com/mail/', 'Open Outlook'],
-                                    'yahoo.com' => ['https://mail.yahoo.com/', 'Open Yahoo Mail'],
-                                    'ymail.com' => ['https://mail.yahoo.com/', 'Open Yahoo Mail'],
-                                ];
+                            @if(session('bank_transfer_password_email_sent'))
+                                @php
+                                    $customerEmail = session('bank_transfer_customer_email');
+                                    $emailDomain = $customerEmail && str_contains($customerEmail, '@')
+                                        ? strtolower(substr(strrchr($customerEmail, '@'), 1))
+                                        : null;
 
-                                $emailProviderUrl = null;
-                                $emailProviderLabel = 'Open Your Email';
+                                    $providerLinks = [
+                                        'gmail.com' => ['https://mail.google.com/', 'Open Gmail'],
+                                        'googlemail.com' => ['https://mail.google.com/', 'Open Gmail'],
+                                        'outlook.com' => ['https://outlook.live.com/mail/', 'Open Outlook'],
+                                        'hotmail.com' => ['https://outlook.live.com/mail/', 'Open Outlook'],
+                                        'live.com' => ['https://outlook.live.com/mail/', 'Open Outlook'],
+                                        'msn.com' => ['https://outlook.live.com/mail/', 'Open Outlook'],
+                                        'yahoo.com' => ['https://mail.yahoo.com/', 'Open Yahoo Mail'],
+                                        'ymail.com' => ['https://mail.yahoo.com/', 'Open Yahoo Mail'],
+                                    ];
 
-                                if ($emailDomain && isset($providerLinks[$emailDomain])) {
-                                    [$emailProviderUrl, $emailProviderLabel] = $providerLinks[$emailDomain];
-                                } elseif ($emailDomain) {
-                                    $emailProviderUrl = 'https://' . $emailDomain;
-                                }
-                            @endphp
+                                    $emailProviderUrl = null;
+                                    $emailProviderLabel = 'Open Your Email';
 
-                            <p class="mt-1 leading-6 text-emerald-800">We also sent you an email to set your password.</p>
-                            @if($emailProviderUrl)
-                                <a href="{{ $emailProviderUrl }}" target="_blank" rel="noopener noreferrer" class="mt-4 inline-flex items-center justify-center rounded-xl bg-violet-600 px-5 py-3 font-black text-white shadow-sm transition hover:bg-violet-700">
-                                    {{ $emailProviderLabel }} →
-                                </a>
+                                    if ($emailDomain && isset($providerLinks[$emailDomain])) {
+                                        [$emailProviderUrl, $emailProviderLabel] = $providerLinks[$emailDomain];
+                                    } elseif ($emailDomain) {
+                                        $emailProviderUrl = 'https://' . $emailDomain;
+                                    }
+                                @endphp
+
+                                <div class="mt-3 rounded-xl bg-violet-50 p-4">
+                                    <p class="font-black text-violet-900">📧 Check your email</p>
+                                    <p class="mt-1 text-sm leading-6 text-violet-800">
+                                        We sent a password setup email to
+                                        <strong class="break-all">{{ $customerEmail }}</strong>.
+                                    </p>
+
+                                    @if($emailProviderUrl)
+                                        <a href="{{ $emailProviderUrl }}" target="_blank" rel="noopener noreferrer" class="mt-4 inline-flex w-full items-center justify-center rounded-xl bg-violet-600 px-5 py-3.5 font-black text-white shadow-sm transition hover:bg-violet-700 sm:w-auto">
+                                            {{ $emailProviderLabel }} →
+                                        </a>
+                                    @endif
+
+                                    <p class="mt-2 text-xs text-violet-700">Check your Spam/Junk folder if you don't see it in your inbox.</p>
+                                </div>
+                            @else
+                                <p class="mt-2 leading-6 text-emerald-800">Please use the password reset option on the customer login page to set your password.</p>
                             @endif
-                        @else
-                            <p class="mt-1 leading-6 text-emerald-800">Please use the password reset option on the customer login page to set your password.</p>
-                        @endif
+                        </div>
                     @endif
 
                     @if(session('bank_transfer_order_number'))
-                        <p class="mt-3 font-semibold text-emerald-900">Order number: <span class="font-mono">{{ session('bank_transfer_order_number') }}</span></p>
+                        <p class="mt-4 font-semibold text-emerald-900">Order number: <span class="font-mono">{{ session('bank_transfer_order_number') }}</span></p>
                     @endif
 
                     @if(session('bank_transfer_show_dashboard'))
