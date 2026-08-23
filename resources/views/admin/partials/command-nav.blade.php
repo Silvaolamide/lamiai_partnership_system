@@ -2,6 +2,8 @@
     <div class="flex flex-wrap items-center gap-1 p-2">
         <a href="{{ route('admin') }}" class="rounded-xl px-3 py-2 text-xs font-black {{ request()->routeIs('admin') ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-50' }}">Overview</a>
         <a href="{{ route('admin.users.index') }}" class="rounded-xl px-3 py-2 text-xs font-black {{ request()->routeIs('admin.users.*') ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-50' }}">Users & Resolution</a>
+        <a href="{{ route('admin.payments.index') }}" class="rounded-xl px-3 py-2 text-xs font-black {{ request()->routeIs('admin.payments.*') ? 'bg-amber-500 text-white' : 'text-slate-600 hover:bg-slate-50' }}">Payment Resolution</a>
+        <a href="{{ route('admin.payment-disputes.index') }}" class="rounded-xl px-3 py-2 text-xs font-black {{ request()->routeIs('admin.payment-disputes.*') ? 'bg-rose-600 text-white' : 'text-slate-600 hover:bg-slate-50' }}">Payment Disputes</a>
         <a href="{{ route('admin.analytics.businesses') }}" class="rounded-xl px-3 py-2 text-xs font-black {{ request()->routeIs('admin.analytics.business*') ? 'bg-violet-600 text-white' : 'text-slate-600 hover:bg-slate-50' }}">Businesses & intelligence</a>
         <a href="{{ route('admin.businesses.index') }}" class="rounded-xl px-3 py-2 text-xs font-black {{ request()->routeIs('admin.businesses.*') ? 'bg-slate-100 text-slate-900' : 'text-slate-600 hover:bg-slate-50' }}">Businesses</a>
         <a href="{{ route('admin.registrations.index') }}" class="rounded-xl px-3 py-2 text-xs font-black {{ request()->routeIs('admin.registrations.*') ? 'bg-amber-500 text-white' : 'text-slate-600 hover:bg-slate-50' }}">Registration recovery</a>
