@@ -19,10 +19,6 @@ class PartnerApprovalService
         return (bool) ($program->settings['partner_business_approval_required'] ?? false);
     }
 
-    /**
-     * Approval rules for a program enrollment after an account already exists.
-     * Programs are adoption-first: approval is opt-in at the program level.
-     */
     public function programEnrollmentRequirements(PartnershipProgram $program): array
     {
         return [
@@ -46,22 +42,21 @@ class PartnerApprovalService
         return $this->syncWithRequirements($partner, $this->requirements($partner->program));
     }
 
-    /**
-     * Sync an existing account's new program enrollment using that program's
-     * own approval policy. This deliberately does not inherit the platform's
-     * initial-registration Super Admin setting, which keeps additional program
-     * enrollment low-friction unless the program explicitly requires approval.
-     */
     public function syncProgramEnrollment(ProgramPartner $partner): ProgramPartner
     {
         return $this->syncWithRequirements($partner, $this->programEnrollmentRequirements($partner->program));
     }
 
-    public function approvalSummary(ProgramPartner $partner, bool $programEnrollment = false): array
+    public function requirementsForPartner(ProgramPartner $partner): array
     {
-        $requirements = $programEnrollment
+        return $partner->approval_context === 'program'
             ? $this->programEnrollmentRequirements($partner->program)
             : $this->requirements($partner->program);
+    }
+
+    public function approvalSummary(ProgramPartner $partner): array
+    {
+        $requirements = $this->requirementsForPartner($partner);
 
         return [
             'requires_super_admin' => $requirements['super_admin'],
@@ -113,7 +108,7 @@ class PartnerApprovalService
         }
 
         $partner->forceFill(['super_admin_approved_at' => now()])->save();
-        return $this->sync($partner->refresh());
+        return $this->syncWithRequirements($partner->refresh(), $this->requirementsForPartner($partner));
     }
 
     public function approveByBusiness(ProgramPartner $partner): ProgramPartner
@@ -123,7 +118,7 @@ class PartnerApprovalService
         }
 
         $partner->forceFill(['business_approved_at' => now()])->save();
-        return $this->sync($partner->refresh());
+        return $this->syncWithRequirements($partner->refresh(), $this->requirementsForPartner($partner));
     }
 
     private function generatePartnerCode(): string
