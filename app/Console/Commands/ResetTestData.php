@@ -5,45 +5,17 @@ namespace App\Console\Commands;
 use App\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
+use Spatie\Permission\Models\Role;
 
 class ResetTestData extends Command
 {
     protected $signature = 'aipm:reset-test';
 
-    protected $description = 'Reset AIPM test data while preserving programs, products, admin accounts, and system configuration.';
+    protected $description = 'Completely reset AIPM test data and platform configuration, then create a fresh Super Admin account.';
 
-    /**
-     * Tables containing platform/reference data or Laravel infrastructure that
-     * must survive a test-data reset.
-     */
-    private array $preservedTables = [
-        'migrations',
-        'cache',
-        'cache_locks',
-        'jobs',
-        'job_batches',
-        'failed_jobs',
-        'password_reset_tokens',
-        'sessions',
-        'products',
-        'partnership_programs',
-        'program_products',
-        'commission_rules',
-        'platform_settings',
-        'platform_payment_settings',
-        'roles',
-        'permissions',
-        'role_has_permissions',
-        'model_has_roles',
-        'model_has_permissions',
-    ];
-
-    /**
-     * Business/transaction tables are cleared before users so that foreign-key
-     * relationships are removed in a predictable order.
-     */
-    private array $transactionTables = [
+    private array $tablesToClear = [
         'payment_disputes',
         'payment_submissions',
         'order_items',
@@ -54,72 +26,115 @@ class ResetTestData extends Command
         'clicks',
         'referrals',
         'program_partners',
+        'program_products',
+        'commission_rules',
+        'products',
+        'partnership_programs',
+        'platform_payment_settings',
+        'platform_settings',
+        'model_has_roles',
+        'model_has_permissions',
+        'role_has_permissions',
+        'permissions',
+        'roles',
+        'notifications',
+        'activity_log',
     ];
 
     public function handle(): int
     {
         if (app()->environment('production')) {
             $this->error('AIPM test reset is blocked while APP_ENV=production.');
-            $this->line('Run this command against a test/staging database, or change the environment explicitly before running it.');
+            $this->line('Run this command against a test/staging database.');
 
             return self::FAILURE;
         }
 
-        if (! $this->confirm('This will permanently remove all non-admin users and their test activity. Continue?', false)) {
-            $this->info('Reset cancelled.');
+        $superAdminEmail = 'olamideagunkejoye@gmail.com';
 
+        $this->newLine();
+        $this->warn('⚠️  AIPM DATABASE RESET');
+        $this->warn('This operation will permanently delete all application data, platform catalogue/configuration, authorization data, and existing users.');
+        $this->newLine();
+        $this->warn('A new Super Admin will be created:');
+        $this->line('  Name:     Olamide Agunkejoye');
+        $this->line("  Email:    {$superAdminEmail}");
+        $this->line('  Password: password123');
+        $this->newLine();
+
+        if (! $this->confirm('THIS CANNOT BE UNDONE. Continue?', false)) {
+            $this->info('Reset cancelled.');
             return self::SUCCESS;
         }
 
-        DB::transaction(function (): void {
+        DB::transaction(function () use ($superAdminEmail): void {
             Schema::disableForeignKeyConstraints();
 
             try {
-                foreach ($this->transactionTables as $table) {
-                    if (Schema::hasTable($table)) {
-                        DB::table($table)->delete();
-                        $this->line("✓ Cleared {$table}");
-                    }
-                }
-
-                $this->clearUserNotificationsAndActivity();
-                $this->removeNonAdminUsers();
+                $this->clearTables();
+                $this->removeAllUsers();
+                $this->createSuperAdmin($superAdminEmail);
             } finally {
                 Schema::enableForeignKeyConstraints();
             }
         });
 
         $this->newLine();
-        $this->info('AIPM test data reset completed.');
-        $this->line('Preserved: programs, products, program-product relationships, commission rules, platform settings, roles/permissions, and admin accounts.');
+        $this->info('✓ AIPM test database reset completed successfully.');
+        $this->info('Fresh Super Admin account created:');
+        $this->line('  Name:     Olamide Agunkejoye');
+        $this->line("  Email:    {$superAdminEmail}");
+        $this->line('  Password: password123');
+        $this->newLine();
+        $this->warn('IMPORTANT: Change the Super Admin password after first login.');
 
         return self::SUCCESS;
     }
 
-    private function clearUserNotificationsAndActivity(): void
+    private function clearTables(): void
     {
-        foreach (['notifications', 'activity_log'] as $table) {
-            if (Schema::hasTable($table)) {
-                DB::table($table)->delete();
-                $this->line("✓ Cleared {$table}");
+        foreach ($this->tablesToClear as $table) {
+            if (! Schema::hasTable($table)) {
+                continue;
             }
+
+            DB::table($table)->delete();
+            $this->line("✓ Cleared {$table}");
         }
     }
 
-    private function removeNonAdminUsers(): void
+    private function removeAllUsers(): void
     {
-        $adminRoleNames = ['Super Admin', 'Admin'];
+        if (! Schema::hasTable('users')) {
+            return;
+        }
 
-        User::query()
-            ->whereDoesntHave('roles', function ($query) use ($adminRoleNames): void {
-                $query->whereIn('name', $adminRoleNames);
-            })
-            ->chunkById(100, function ($users): void {
-                foreach ($users as $user) {
-                    $user->delete();
-                }
-            });
+        User::query()->chunkById(100, function ($users): void {
+            foreach ($users as $user) {
+                $user->delete();
+            }
+        });
 
-        $this->line('✓ Removed non-admin users (customers, partners, businesses, and their accounts)');
+        $this->line('✓ Removed all users, including existing Super Admin accounts');
+    }
+
+    private function createSuperAdmin(string $email): void
+    {
+        $superAdminRole = Role::create([
+            'name' => 'super_admin',
+            'guard_name' => 'web',
+        ]);
+
+        $superAdmin = User::create([
+            'name' => 'Olamide Agunkejoye',
+            'email' => $email,
+            'password' => Hash::make('password123'),
+            'email_verified_at' => now(),
+        ]);
+
+        $superAdmin->assignRole($superAdminRole);
+
+        $this->line('✓ Created fresh Super Admin role');
+        $this->line('✓ Created fresh Super Admin account');
     }
 }
