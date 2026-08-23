@@ -10,12 +10,12 @@ class CustomerDashboardController extends Controller
     {
         $orders = $request->user()
             ->orders()
-            ->with(['items.product'])
-            ->where('status', 'paid')
-            ->latest('paid_at')
+            ->with(['items.product', 'latestPaymentSubmission'])
+            ->latest('created_at')
             ->get();
 
         $products = $orders
+            ->filter(fn ($order) => $order->status === 'paid')
             ->flatMap(fn ($order) => $order->items)
             ->filter(fn ($item) => $item->product)
             ->map(function ($item) {
@@ -33,6 +33,8 @@ class CustomerDashboardController extends Controller
             ->unique(fn ($entry) => $entry['product']->id)
             ->values();
 
-        return view('customer.dashboard', compact('orders', 'products'));
+        $pendingTransfers = $orders->filter(fn ($order) => $order->payment_method === 'bank_transfer' && $order->status === 'pending');
+
+        return view('customer.dashboard', compact('orders', 'products', 'pendingTransfers'));
     }
 }

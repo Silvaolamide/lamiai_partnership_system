@@ -1,5 +1,22 @@
 @props(['count' => 0, 'role' => 'business'])
 
+@if(auth()->check() && auth()->user()->hasRole('partner') && auth()->user()->hasRole('customer'))
+    <div class="mb-4 flex flex-col gap-3 rounded-2xl border border-violet-200 bg-violet-50 p-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+            <p class="text-xs font-black uppercase tracking-[0.16em] text-violet-700">You have two modes</p>
+            <p class="mt-1 text-sm font-semibold text-violet-950">Switch between buying products and growing your partner business without signing out.</p>
+        </div>
+        <div class="flex flex-wrap gap-2">
+            <a href="{{ route('marketplace.products') }}" class="inline-flex shrink-0 items-center justify-center rounded-xl bg-white px-4 py-2.5 text-sm font-black text-blue-700 shadow-sm ring-1 ring-blue-200 hover:bg-blue-50">🛍️ Product Marketplace</a>
+            @if($role === 'partner')
+                <a href="{{ route('customer.dashboard') }}" class="inline-flex shrink-0 items-center justify-center rounded-xl bg-white px-4 py-2.5 text-sm font-black text-violet-700 shadow-sm ring-1 ring-violet-200 hover:bg-violet-100">🛍️ Switch to Customer Mode →</a>
+            @elseif($role === 'customer')
+                <a href="{{ route('partner.dashboard') }}" class="inline-flex shrink-0 items-center justify-center rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-black text-white shadow-sm hover:bg-violet-700">🤝 Switch to Partner/Affiliate Mode →</a>
+            @endif
+        </div>
+    </div>
+@endif
+
 @if($count > 0)
     @php
         $isAdmin = $role === 'admin';
