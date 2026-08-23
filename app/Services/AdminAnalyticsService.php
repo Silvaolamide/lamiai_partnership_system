@@ -58,14 +58,21 @@ class AdminAnalyticsService
         $programIds = $programScope->select('id');
         $payouts = Payout::query()->whereIn('status', ['requested', 'pending', 'approved'])->when($businessId, fn ($q) => $q->whereIn('program_id', PartnershipProgram::select('id')->where('owner_id', $businessId)))->when($programId, fn ($q) => $q->where('program_id', $programId));
 
+        // ProgramPartner is a membership/enrollment record, not a person. A
+        // partner can legitimately have one row for every program they join,
+        // so platform-wide partner metrics must count distinct user_id values.
+        $partnerScope = ProgramPartner::query()->whereIn('program_id', $programIds);
+
         return [
             'gross_sales' => $gross,
             'commission_total' => $commissionTotal,
             'platform_fees' => $platformFees,
             'net_revenue' => $platformFees,
             'orders' => (clone $orders)->count(),
-            'partners' => ProgramPartner::whereIn('program_id', $programIds)->count(), 'active_partners' => ProgramPartner::whereIn('program_id', $programIds)->where('status', 'active')->count(),
-            'pending_partners' => ProgramPartner::whereIn('program_id', $programIds)->where('status', 'pending')->count(), 'programs' => (clone $programScope)->count(),
+            'partners' => (clone $partnerScope)->distinct()->count('user_id'),
+            'active_partners' => (clone $partnerScope)->where('status', 'active')->distinct()->count('user_id'),
+            'pending_partners' => (clone $partnerScope)->where('status', 'pending')->distinct()->count('user_id'),
+            'programs' => (clone $programScope)->count(),
             'products' => ($businessId || $programId) ? Product::whereHas('partnershipPrograms', fn ($q) => $q->whereIn('partnership_programs.id', $programIds))->count() : Product::count(),
             'customers' => (clone $orders)->whereNotNull('customer_id')->distinct()->count('customer_id'),
             'payable' => (float) $this->commissionQuery($from, $to, $businessId, $programId)->whereIn('status', ['available', 'approved', 'payable'])->sum('commission_amount'),
@@ -79,10 +86,6 @@ class AdminAnalyticsService
         $sales = $this->orderQuery($from, $to, $businessId, $programId)->selectRaw('DATE(created_at) as day, COUNT(*) as orders, SUM(total) as sales')->groupByRaw('DATE(created_at)')->orderBy('day')->get()->keyBy('day');
         $commissions = $this->commissionQuery($from, $to, $businessId, $programId)->selectRaw('DATE(created_at) as day, SUM(commission_amount) as commissions')->groupByRaw('DATE(created_at)')->orderBy('day')->get()->keyBy('day');
 
-        // Platform fees are derived from the configured admin charge rate when the
-        // order table does not have a persisted platform_fee_amount column. This
-        // keeps analytics compatible with existing databases while still showing
-        // the same fee used by the payout calculations.
         $orderRows = $this->orderQuery($from, $to, $businessId, $programId)->select(['created_at', 'total'])->get();
         $rate = min(100, max(0, (float) PlatformSetting::getValue('admin_charge_percent', 0)));
         $platformFees = $orderRows->groupBy(fn ($order) => $order->created_at->format('Y-m-d'))->map(function ($rows) use ($rate) {
