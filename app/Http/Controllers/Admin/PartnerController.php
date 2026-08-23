@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Commission;
 use App\Models\Order;
 use App\Models\ProgramPartner;
 use App\Models\User;
@@ -42,6 +43,7 @@ class PartnerController extends Controller
                     'recruits' => $recruitedUserIds->count(),
                     'active_programs' => $memberships->where('status', 'active')->count(),
                     'pending_programs' => $memberships->where('status', 'pending')->count(),
+                    'earnings' => (float) Commission::whereIn('partner_id', $membershipIds)->whereNotIn('status', ['reversed', 'cancelled'])->sum('commission_amount'),
                 ];
                 $user->admin_programs = $programs;
                 $user->admin_memberships = $memberships;
