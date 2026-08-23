@@ -2,11 +2,15 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Product;
 use App\Models\PlatformPaymentSetting;
+use App\Models\Product;
+use App\Models\User;
 use App\Services\CheckoutOrderService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Str;
 
 class ManualPaymentController extends Controller
 {
@@ -48,6 +52,7 @@ class ManualPaymentController extends Controller
                 ->withInput();
         }
 
+        $wasLoggedIn = Auth::check();
         $order = $this->checkoutOrderService->create($product, $data);
         $path = $request->file('proof')->store('payment-proofs', 'public');
 
@@ -63,6 +68,34 @@ class ManualPaymentController extends Controller
             'proof_path' => $path,
         ]);
 
+        $accountCreated = false;
+        $passwordEmailSent = false;
+
+        if (!$wasLoggedIn) {
+            $email = strtolower($data['customer_email']);
+            $customer = User::whereRaw('LOWER(email) = ?', [$email])->first();
+
+            if (!$customer) {
+                $customer = User::create([
+                    'name' => $data['customer_name'],
+                    'email' => $email,
+                    'registration_type' => 'customer',
+                    'password' => Hash::make(Str::random(64)),
+                ]);
+                $customer->assignRole('customer');
+                $accountCreated = true;
+
+                try {
+                    $passwordEmailSent = Password::sendResetLink(['email' => $email]) === Password::RESET_LINK_SENT;
+                } catch (\Throwable $e) {
+                    report($e);
+                }
+            }
+
+            // Safely attach the order to the matching account without authenticating the browser session.
+            $order->update(['customer_id' => $customer->id]);
+        }
+
         $request->session()->put('checkout_order_id', $order->id);
         $request->session()->forget('checkout_product_id');
 
@@ -70,7 +103,10 @@ class ManualPaymentController extends Controller
             ->route('checkout.bank-transfer', ['product' => $product->id])
             ->with('success', 'Your order has been placed and your payment proof has been submitted. Our payment team will verify the transfer before marking the order as paid.')
             ->with('bank_transfer_submitted', true)
-            ->with('bank_transfer_order_number', $order->order_number);
+            ->with('bank_transfer_order_number', $order->order_number)
+            ->with('bank_transfer_show_dashboard', $wasLoggedIn)
+            ->with('bank_transfer_account_created', $accountCreated)
+            ->with('bank_transfer_password_email_sent', $passwordEmailSent);
     }
 
     private function validateProduct(Product $product): void
