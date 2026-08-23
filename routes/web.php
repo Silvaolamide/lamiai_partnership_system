@@ -31,9 +31,11 @@ use App\Http\Controllers\PaymentDisputeController;
 use App\Http\Controllers\PayoutController;
 use App\Http\Controllers\ProductAccessController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\ProductMarketplaceController;
 use App\Http\Controllers\ProductShowController;
 use App\Http\Controllers\ProfileController;
 use App\Models\PartnershipProgram;
+use App\Models\Product;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'verified'])->group(function () {
@@ -93,7 +95,12 @@ Route::middleware(['auth', 'role:super_admin'])->prefix('admin')->group(function
 });
 Route::get('/partner/apply', [PartnerController::class, 'create'])->name('partner.apply'); Route::post('/partner/apply', [PartnerController::class, 'store'])->name('partner.apply.store');
 Route::get('/partner/store/{partnerCode}', [PartnerReferralShowcaseController::class, 'show'])->name('partner.storefront');
-Route::get('/', function(){ $programs=PartnershipProgram::query()->where('status','active')->with(['commissionRules'=>fn($query)=>$query->where('status',true)->orderBy('priority')->orderBy('level')])->latest()->limit(6)->get(); return view('home',compact('programs')); })->name('home');
+Route::get('/marketplace', [ProductMarketplaceController::class, 'index'])->name('marketplace.products');
+Route::get('/', function(){
+    $programs = PartnershipProgram::query()->where('status','active')->with(['commissionRules'=>fn($query)=>$query->where('status',true)->orderBy('priority')->orderBy('level')])->latest()->limit(6)->get();
+    $marketplaceProducts = Product::query()->where('status','active')->with(['owner','partnershipPrograms'=>fn($query)=>$query->where('status','active')->orderBy('name')])->withCount(['orderItems as paid_units_sold'=>fn($query)=>$query->whereHas('order',fn($order)=>$order->where('status','paid'))])->orderByDesc('paid_units_sold')->latest()->limit(6)->get();
+    return view('home',compact('programs','marketplaceProducts'));
+})->name('home');
 Route::get('/dashboard', function(){ $user=request()->user(); if($user->hasRole('super_admin')) return redirect()->route('admin'); if($user->hasRole('program_manager')) return redirect()->route('business.dashboard'); if($user->hasRole('partner')) return redirect()->route('partner.dashboard'); if($user->hasRole('customer')) return redirect()->route('customer.dashboard'); return redirect()->route('home'); })->middleware(['auth','verified'])->name('dashboard');
 Route::middleware('auth')->group(function(){ Route::get('/profile',[ProfileController::class,'edit'])->name('profile.edit'); Route::patch('/profile',[ProfileController::class,'update'])->name('profile.update'); Route::delete('/profile',[ProfileController::class,'destroy'])->name('profile.destroy'); });
 Route::get('/product/{slug}',[ProductShowController::class,'show'])->name('product.show');
