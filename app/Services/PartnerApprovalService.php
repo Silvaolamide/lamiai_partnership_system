@@ -9,6 +9,7 @@ use Illuminate\Support\Str;
 
 class PartnerApprovalService
 {
+    /** @deprecated Kept for compatibility with existing admin/settings code. */
     public function superAdminApprovalRequired(): bool
     {
         return (bool) PlatformSetting::getValue('partner_super_admin_approval_required', true);
@@ -19,6 +20,10 @@ class PartnerApprovalService
         return (bool) ($program->settings['partner_business_approval_required'] ?? false);
     }
 
+    /**
+     * Program membership is adoption-first. Manual approval is opt-in per program.
+     * Email verification is enforced by the verified middleware before partner access.
+     */
     public function programEnrollmentRequirements(PartnershipProgram $program): array
     {
         return [
@@ -30,16 +35,12 @@ class PartnerApprovalService
 
     public function requirements(PartnershipProgram $program): array
     {
-        return [
-            'email' => true,
-            'super_admin' => $this->superAdminApprovalRequired(),
-            'business' => $this->businessApprovalRequired($program),
-        ];
+        return $this->programEnrollmentRequirements($program);
     }
 
     public function sync(ProgramPartner $partner): ProgramPartner
     {
-        return $this->syncWithRequirements($partner, $this->requirements($partner->program));
+        return $this->syncWithRequirements($partner, $this->requirementsForPartner($partner));
     }
 
     public function syncProgramEnrollment(ProgramPartner $partner): ProgramPartner
@@ -49,9 +50,7 @@ class PartnerApprovalService
 
     public function requirementsForPartner(ProgramPartner $partner): array
     {
-        return $partner->approval_context === 'program'
-            ? $this->programEnrollmentRequirements($partner->program)
-            : $this->requirements($partner->program);
+        return $this->programEnrollmentRequirements($partner->program);
     }
 
     public function approvalSummary(ProgramPartner $partner): array
@@ -103,20 +102,14 @@ class PartnerApprovalService
 
     public function approveBySuperAdmin(ProgramPartner $partner): ProgramPartner
     {
-        if ($partner->status === 'rejected') {
-            return $partner;
-        }
-
+        if ($partner->status === 'rejected') return $partner;
         $partner->forceFill(['super_admin_approved_at' => now()])->save();
         return $this->syncWithRequirements($partner->refresh(), $this->requirementsForPartner($partner));
     }
 
     public function approveByBusiness(ProgramPartner $partner): ProgramPartner
     {
-        if ($partner->status === 'rejected') {
-            return $partner;
-        }
-
+        if ($partner->status === 'rejected') return $partner;
         $partner->forceFill(['business_approved_at' => now()])->save();
         return $this->syncWithRequirements($partner->refresh(), $this->requirementsForPartner($partner));
     }
@@ -126,7 +119,6 @@ class PartnerApprovalService
         do {
             $code = 'LAMI-' . Str::upper(Str::random(8));
         } while (ProgramPartner::where('partner_code', $code)->exists());
-
         return $code;
     }
 }
