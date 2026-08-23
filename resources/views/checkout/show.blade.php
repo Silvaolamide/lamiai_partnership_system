@@ -32,7 +32,7 @@
 
                 <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
                     <h2 class="text-xl font-bold">Choose your payment method</h2>
-                    <p class="mt-2 text-sm leading-6 text-slate-600">For bank transfer, you will first make the transfer, attach your payment proof, and then submit it. The order is created when you submit the proof.</p>
+                    <p class="mt-2 text-sm leading-6 text-slate-600">Pay securely with Paystack or make a bank transfer using the account details below.</p>
 
                     <div class="mt-6 space-y-4">
                         <div class="rounded-2xl border border-violet-200 bg-violet-50 p-5">
@@ -40,7 +40,7 @@
                                 <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-violet-600 font-black text-white">1</div>
                                 <div>
                                     <h3 class="font-black">Pay securely with Paystack</h3>
-                                    <p class="mt-1 text-sm leading-6 text-slate-600">Your order is created when you click the Paystack payment button, then you are taken to Paystack to complete payment.</p>
+                                    <p class="mt-1 text-sm leading-6 text-slate-600">Click the Paystack button to continue securely. Your saved customer account details will be used for the payment.</p>
                                 </div>
                             </div>
                         </div>
@@ -50,9 +50,28 @@
                                 <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-900 font-black text-white">2</div>
                                 <div>
                                     <h3 class="font-black">Pay by bank transfer</h3>
-                                    <p class="mt-1 text-sm leading-6 text-slate-600">View the account details, make the transfer, attach your proof of payment, and click <strong>Submit Payment Proof</strong>. That button places the order and sends your proof for verification.</p>
+                                    <p class="mt-1 text-sm leading-6 text-slate-600">Transfer the exact amount below, then click the bank transfer button to attach your proof of payment.</p>
                                 </div>
                             </div>
+
+                            <dl class="mt-5 divide-y divide-slate-200 overflow-hidden rounded-xl border border-slate-200 bg-white">
+                                <div class="flex items-center justify-between gap-4 p-4">
+                                    <dt class="text-sm text-slate-500">Bank</dt>
+                                    <dd class="text-right font-black">{{ $paymentSettings->bank_name ?: 'Not configured' }}</dd>
+                                </div>
+                                <div class="flex items-center justify-between gap-4 p-4">
+                                    <dt class="text-sm text-slate-500">Account name</dt>
+                                    <dd class="text-right font-black">{{ $paymentSettings->account_name ?: 'Not configured' }}</dd>
+                                </div>
+                                <div class="flex items-center justify-between gap-4 p-4">
+                                    <dt class="text-sm text-slate-500">Account number</dt>
+                                    <dd class="text-right font-black tracking-wide">{{ $paymentSettings->account_number ?: 'Not configured' }}</dd>
+                                </div>
+                                <div class="flex items-center justify-between gap-4 bg-slate-100 p-4">
+                                    <dt class="font-bold text-slate-700">Exact amount</dt>
+                                    <dd class="text-right text-xl font-black">₦{{ number_format($product->price, 2) }}</dd>
+                                </div>
+                            </dl>
                         </div>
                     </div>
                 </section>
@@ -66,42 +85,31 @@
                         <span class="text-3xl font-black">₦{{ number_format($product->price, 2) }}</span>
                     </div>
 
-                    <form action="{{ route('checkout.paystack', ['product' => $product->id]) }}" method="POST" class="mt-6 space-y-4">
-                        @csrf
-                        <div>
-                            <label class="mb-2 block text-sm font-semibold" for="customer_name">Full name</label>
-                            <input id="customer_name" name="customer_name" value="{{ old('customer_name', Auth::user()?->name) }}" required autocomplete="name" placeholder="e.g. Ada Okafor" class="w-full rounded-xl border-slate-200 bg-slate-50 px-4 py-3">
-                        </div>
-                        <div>
-                            <label class="mb-2 block text-sm font-semibold" for="customer_email">Email address</label>
-                            <input id="customer_email" type="email" name="customer_email" value="{{ old('customer_email', Auth::user()?->email) }}" required autocomplete="email" placeholder="you@example.com" class="w-full rounded-xl border-slate-200 bg-slate-50 px-4 py-3">
-                        </div>
-                        <div>
-                            <label class="mb-2 block text-sm font-semibold" for="customer_phone">Phone</label>
-                            <input id="customer_phone" name="customer_phone" value="{{ old('customer_phone') }}" autocomplete="tel" placeholder="e.g. 08012345678" class="w-full rounded-xl border-slate-200 bg-slate-50 px-4 py-3">
-                        </div>
-                        <button type="submit" class="w-full rounded-xl bg-violet-600 px-5 py-3.5 font-semibold text-white hover:bg-violet-700">Pay securely with Paystack</button>
-                    </form>
+                    @auth
+                        <p class="mt-6 rounded-xl bg-slate-50 p-4 text-sm leading-6 text-slate-600">
+                            Paying as <strong>{{ Auth::user()->name }}</strong><br>
+                            <span>{{ Auth::user()->email }}</span>
+                        </p>
+                        <form action="{{ route('checkout.paystack', ['product' => $product->id]) }}" method="POST" class="mt-4">
+                            @csrf
+                            <button type="submit" class="w-full rounded-xl bg-violet-600 px-5 py-3.5 font-semibold text-white hover:bg-violet-700">Pay securely with Paystack</button>
+                        </form>
+                    @else
+                        <a href="{{ route('customer.login', ['intended' => route('checkout.show', ['product' => $product->id])]) }}" class="mt-6 block w-full rounded-xl bg-violet-600 px-5 py-3.5 text-center font-semibold text-white hover:bg-violet-700">Sign in to pay with Paystack</a>
+                        <p class="mt-3 text-center text-xs leading-5 text-slate-500">Sign in or create a customer account to use Paystack.</p>
+                    @endauth
 
                     @if (app()->environment('local'))
                         <div class="my-5 rounded-xl border border-dashed border-amber-300 bg-amber-50 p-4">
                             <p class="text-xs font-black uppercase tracking-wider text-amber-700">Local testing</p>
                             <p class="mt-1 text-sm text-amber-800">Demo payment is available on your local environment only. It does not process real money.</p>
-                            <form action="{{ route('checkout.confirm', ['orderId' => $product->id]) }}" method="POST" class="mt-3 space-y-3">
-                                @csrf
-                                <input type="hidden" name="payment_method" value="demo">
-                                <input type="hidden" name="customer_name" value="{{ old('customer_name', Auth::user()?->name ?: 'Demo Customer') }}">
-                                <input type="hidden" name="customer_email" value="{{ old('customer_email', Auth::user()?->email ?: 'demo@example.com') }}">
-                                <input type="hidden" name="customer_phone" value="{{ old('customer_phone') }}">
-                                <button type="submit" class="w-full rounded-xl border-2 border-amber-500 bg-white px-5 py-3 font-black text-amber-800 hover:bg-amber-100">Complete demo payment</button>
-                            </form>
                         </div>
                     @endif
 
                     <div class="my-5 flex items-center gap-3 text-xs text-slate-400"><span class="h-px flex-1 bg-slate-200"></span>OR<span class="h-px flex-1 bg-slate-200"></span></div>
 
                     <a href="{{ route('checkout.bank-transfer', ['product' => $product->id]) }}" class="block w-full rounded-xl border-2 border-slate-900 px-5 py-3.5 text-center font-black text-slate-900 hover:bg-slate-50">Pay by Bank Transfer</a>
-                    <p class="mt-3 text-center text-xs leading-5 text-slate-500">Make your transfer first. On the next page, attach your proof and click <strong>Submit Payment Proof</strong> to place the order.</p>
+                    <p class="mt-3 text-center text-xs leading-5 text-slate-500">The bank details are shown beside this payment option. Make your transfer first, then attach your proof to place the order.</p>
                 </div>
             </aside>
         </div>
