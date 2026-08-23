@@ -106,7 +106,8 @@ class ManualPaymentController extends Controller
             ->with('bank_transfer_order_number', $order->order_number)
             ->with('bank_transfer_show_dashboard', $wasLoggedIn)
             ->with('bank_transfer_account_created', $accountCreated)
-            ->with('bank_transfer_password_email_sent', $passwordEmailSent);
+            ->with('bank_transfer_password_email_sent', $passwordEmailSent)
+            ->with('bank_transfer_customer_email', strtolower($data['customer_email']));
     }
 
     private function validateProduct(Product $product): void
