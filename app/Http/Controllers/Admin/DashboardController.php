@@ -54,9 +54,16 @@ class DashboardController extends Controller
         }
         $pendingPaymentConfirmations = $pendingPaymentConfirmationQuery->count();
 
-        $incompleteBusinessRegistrations = User::query()->where('registration_type', 'business')->where(function ($q) {
-            $q->whereNull('email_verified_at')->orWhereDoesntHave('roles', fn ($role) => $role->where('name', 'program_manager'))->orWhereNull('business_super_admin_approved_at');
-        })->count();
+        // Super admins are platform operators, not business registrants. They must never
+        // be counted in the urgent business-registration recovery queue.
+        $incompleteBusinessRegistrations = User::query()
+            ->where('registration_type', 'business')
+            ->whereDoesntHave('roles', fn ($role) => $role->where('name', 'super_admin'))
+            ->where(function ($q) {
+                $q->whereNull('email_verified_at')
+                    ->orWhereDoesntHave('roles', fn ($role) => $role->where('name', 'program_manager'))
+                    ->orWhereNull('business_super_admin_approved_at');
+            })->count();
 
         $pendingPartnerPayouts = Payout::whereIn('status', ['requested', 'pending'])->count();
         $pendingBusinessPayouts = BusinessPayout::whereIn('status', ['requested', 'pending'])->count();
