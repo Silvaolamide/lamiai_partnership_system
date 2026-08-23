@@ -1,75 +1,32 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ $program->name }} · LAMI AI</title>
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
-</head>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>{{ $program->name }} · LAMI AI</title>@vite(['resources/css/app.css', 'resources/js/app.js'])</head>
 <body class="min-h-screen bg-slate-50 text-slate-900">
 <div class="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
     <a href="{{ route('partner.marketplace.index') }}" class="text-sm font-semibold text-slate-500 hover:text-slate-900">← Back to marketplace</a>
-
-    @if(session('success'))
-        <div class="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm font-semibold text-emerald-800">{{ session('success') }}</div>
-    @endif
-
-    <section class="mt-5 overflow-hidden rounded-3xl bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 p-8 text-white shadow-xl sm:p-12">
-        <div class="max-w-3xl">
-            <span class="rounded-full bg-white/10 px-3 py-1 text-xs font-bold uppercase tracking-wider">Affiliate opportunity</span>
-            <h1 class="mt-5 text-4xl font-black tracking-tight sm:text-5xl">{{ $program->name }}</h1>
-            <p class="mt-3 text-lg text-slate-300">{{ $program->owner?->business_name ?: $program->owner?->name }} is looking for affiliates to help grow sales.</p>
-            <p class="mt-6 text-slate-300">{{ $program->description ?: 'Promote these products to your audience and earn commission on qualifying sales.' }}</p>
-        </div>
-    </section>
-
-    <section class="mt-6 grid gap-4 md:grid-cols-3">
-        @php $level1 = $program->commissionRules->where('level', 1)->first(); $level2 = $program->commissionRules->where('level', 2)->first(); @endphp
-        <div class="rounded-2xl border border-slate-200 bg-white p-6"><p class="text-sm font-semibold text-slate-500">Direct sales commission</p><p class="mt-2 text-3xl font-black text-emerald-600">{{ $level1 ? ($level1->commission_type === 'percentage' ? rtrim(rtrim(number_format($level1->value, 2), '0'), '.').'%' : '₦'.number_format($level1->value, 2)) : '—' }}</p><p class="mt-1 text-xs text-slate-500">Earned when your referral makes a qualifying sale.</p></div>
-        <div class="rounded-2xl border border-slate-200 bg-white p-6"><p class="text-sm font-semibold text-slate-500">Recruiter commission</p><p class="mt-2 text-3xl font-black text-violet-600">{{ $level2 ? ($level2->commission_type === 'percentage' ? rtrim(rtrim(number_format($level2->value, 2), '0'), '.').'%' : '₦'.number_format($level2->value, 2)) : '—' }}</p><p class="mt-1 text-xs text-slate-500">Earned where the program's higher-level rules apply.</p></div>
-        <div class="rounded-2xl border border-slate-200 bg-white p-6"><p class="text-sm font-semibold text-slate-500">Attribution window</p><p class="mt-2 text-3xl font-black">{{ $program->attribution_window_days }} days</p><p class="mt-1 text-xs text-slate-500">Referral attribution remains eligible for this period.</p></div>
-    </section>
-
+    @if(session('success'))<div class="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm font-semibold text-emerald-800">{{ session('success') }}</div>@endif
+    <section class="mt-5 overflow-hidden rounded-3xl bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 p-8 text-white shadow-xl sm:p-12"><div class="max-w-3xl"><span class="rounded-full bg-white/10 px-3 py-1 text-xs font-bold uppercase tracking-wider">Affiliate opportunity</span><h1 class="mt-5 text-4xl font-black tracking-tight sm:text-5xl">{{ $program->name }}</h1><p class="mt-3 text-lg text-slate-300">{{ $program->owner?->business_name ?: $program->owner?->name }} is looking for affiliates to help grow sales.</p><p class="mt-6 text-slate-300">{{ $program->description ?: 'Promote these products to your audience and earn commission on qualifying sales.' }}</p></div></section>
+    <section class="mt-6 grid gap-4 md:grid-cols-3">@php $level1 = $program->commissionRules->where('level', 1)->first(); $level2 = $program->commissionRules->where('level', 2)->first(); @endphp<div class="rounded-2xl border border-slate-200 bg-white p-6"><p class="text-sm font-semibold text-slate-500">Direct sales commission</p><p class="mt-2 text-3xl font-black text-emerald-600">{{ $level1 ? ($level1->commission_type === 'percentage' ? rtrim(rtrim(number_format($level1->value, 2), '0'), '.').'%' : '₦'.number_format($level1->value, 2)) : '—' }}</p><p class="mt-1 text-xs text-slate-500">Earned when your referral makes a qualifying sale.</p></div><div class="rounded-2xl border border-slate-200 bg-white p-6"><p class="text-sm font-semibold text-slate-500">Recruiter commission</p><p class="mt-2 text-3xl font-black text-violet-600">{{ $level2 ? ($level2->commission_type === 'percentage' ? rtrim(rtrim(number_format($level2->value, 2), '0'), '.').'%' : '₦'.number_format($level2->value, 2)) : '—' }}</p><p class="mt-1 text-xs text-slate-500">Earned where the program's higher-level rules apply.</p></div><div class="rounded-2xl border border-slate-200 bg-white p-6"><p class="text-sm font-semibold text-slate-500">Attribution window</p><p class="mt-2 text-3xl font-black">{{ $program->attribution_window_days }} days</p><p class="mt-1 text-xs text-slate-500">Referral attribution remains eligible for this period.</p></div></section>
     <div class="mt-8 grid gap-8 lg:grid-cols-[1fr_360px]">
         <main>
-            <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
-                <h2 class="text-2xl font-black">Products you'll promote</h2>
-                <p class="mt-1 text-slate-500">These are the products connected to this affiliate program.</p>
-                <div class="mt-6 space-y-4">
+            <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8"><h2 class="text-2xl font-black">Products you'll promote</h2><p class="mt-1 text-slate-500">These are the products connected to this affiliate program.</p>
+                <div class="mt-6 grid gap-5 sm:grid-cols-2">
                     @forelse($program->products as $product)
-                        <div class="flex flex-col gap-4 rounded-2xl border border-slate-200 p-5 sm:flex-row sm:items-center sm:justify-between">
-                            <div><h3 class="font-bold">{{ $product->name }}</h3><p class="mt-1 text-sm text-slate-500">{{ Str::limit($product->description, 100) }}</p></div>
-                            <div class="shrink-0 text-left sm:text-right"><p class="text-xl font-black">₦{{ number_format($product->price, 2) }}</p><a href="{{ route('product.show', ['slug' => $product->slug]) }}" target="_blank" class="mt-1 inline-block text-sm font-semibold text-blue-600">Preview sales page ↗</a></div>
-                        </div>
+                        <article class="group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
+                            <a href="{{ route('product.show', ['slug' => $product->slug]) }}" target="_blank" rel="noopener noreferrer" class="relative block aspect-[4/3] overflow-hidden bg-slate-100">
+                                @if($product->featured_image)<img src="{{ Storage::url($product->featured_image) }}" alt="{{ $product->name }}" class="h-full w-full object-cover transition duration-300 group-hover:scale-105">@else<div class="grid h-full place-items-center bg-gradient-to-br from-slate-100 to-blue-50 text-4xl font-black text-blue-200">{{ strtoupper(substr($product->name,0,1)) }}</div>@endif
+                                <span class="absolute bottom-3 left-3 rounded-full bg-white/95 px-3 py-1 text-xs font-black text-slate-800 shadow-sm">{{ $product->currency }} {{ number_format($product->price, 2) }}</span>
+                            </a>
+                            <div class="p-5"><h3 class="text-lg font-black">{{ $product->name }}</h3><p class="mt-2 min-h-12 text-sm leading-6 text-slate-500">{{ Str::limit($product->description, 100) }}</p><a href="{{ route('product.show', ['slug' => $product->slug]) }}" target="_blank" rel="noopener noreferrer" class="mt-4 inline-flex text-sm font-black text-blue-600">Preview sales page ↗</a></div>
+                        </article>
                     @empty
-                        <p class="rounded-2xl bg-slate-50 p-5 text-sm text-slate-500">No products are currently attached to this program.</p>
+                        <p class="sm:col-span-2 rounded-2xl bg-slate-50 p-5 text-sm text-slate-500">No products are currently attached to this program.</p>
                     @endforelse
                 </div>
             </section>
-
-            <section class="mt-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
-                <h2 class="text-2xl font-black">How it works</h2>
-                <div class="mt-6 grid gap-5 sm:grid-cols-3">
-                    <div><span class="flex h-9 w-9 items-center justify-center rounded-full bg-blue-100 font-bold text-blue-700">1</span><h3 class="mt-3 font-bold">Join</h3><p class="mt-1 text-sm text-slate-500">Apply to this affiliate program.</p></div>
-                    <div><span class="flex h-9 w-9 items-center justify-center rounded-full bg-blue-100 font-bold text-blue-700">2</span><h3 class="mt-3 font-bold">Promote</h3><p class="mt-1 text-sm text-slate-500">Share your tracked product links with your audience.</p></div>
-                    <div><span class="flex h-9 w-9 items-center justify-center rounded-full bg-blue-100 font-bold text-blue-700">3</span><h3 class="mt-3 font-bold">Earn</h3><p class="mt-1 text-sm text-slate-500">Qualifying purchases generate commissions for you.</p></div>
-                </div>
-            </section>
+            <section class="mt-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8"><h2 class="text-2xl font-black">How it works</h2><div class="mt-6 grid gap-5 sm:grid-cols-3"><div><span class="flex h-9 w-9 items-center justify-center rounded-full bg-blue-100 font-bold text-blue-700">1</span><h3 class="mt-3 font-bold">Join</h3><p class="mt-1 text-sm text-slate-500">Apply to this affiliate program.</p></div><div><span class="flex h-9 w-9 items-center justify-center rounded-full bg-blue-100 font-bold text-blue-700">2</span><h3 class="mt-3 font-bold">Promote</h3><p class="mt-1 text-sm text-slate-500">Share your tracked product links with your audience.</p></div><div><span class="flex h-9 w-9 items-center justify-center rounded-full bg-blue-100 font-bold text-blue-700">3</span><h3 class="mt-3 font-bold">Earn</h3><p class="mt-1 text-sm text-slate-500">Qualifying purchases generate commissions for you.</p></div></div></section>
         </main>
-
-        <aside>
-            <div class="sticky top-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-lg">
-                <p class="text-sm font-bold uppercase tracking-wider text-blue-600">Ready to promote?</p>
-                <h2 class="mt-2 text-2xl font-black">Join {{ $program->name }}</h2>
-                <p class="mt-2 text-sm leading-6 text-slate-500">Once approved, you'll receive your unique affiliate code and can start sharing tracked product links.</p>
-                @if($membership)
-                    <div class="mt-6 rounded-2xl bg-slate-50 p-4"><p class="text-sm font-semibold">Your application</p><p class="mt-1 text-sm capitalize text-slate-500">Status: {{ $membership->status }}</p>@if($membership->status === 'active')<a href="{{ route('partner.dashboard') }}" class="mt-3 inline-block font-semibold text-blue-600">Go to partner dashboard →</a>@endif</div>
-                @else
-                    <form method="POST" action="{{ route('partner.marketplace.join', $program) }}" class="mt-6">@csrf<button class="w-full rounded-xl bg-blue-600 px-5 py-3.5 font-bold text-white shadow-sm hover:bg-blue-700">Join Affiliate Program</button></form>
-                @endif
-                <p class="mt-4 text-center text-xs text-slate-400">Program minimum payout: ₦{{ number_format($program->minimum_payout, 2) }}</p>
-            </div>
-        </aside>
+        <aside><div class="sticky top-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-lg"><p class="text-sm font-bold uppercase tracking-wider text-blue-600">Ready to promote?</p><h2 class="mt-2 text-2xl font-black">Join {{ $program->name }}</h2><p class="mt-2 text-sm leading-6 text-slate-500">Once approved, you'll receive your unique affiliate code and can start sharing tracked product links.</p>@if($membership)<div class="mt-6 rounded-2xl bg-slate-50 p-4"><p class="text-sm font-semibold">Your application</p><p class="mt-1 text-sm capitalize text-slate-500">Status: {{ $membership->status }}</p>@if($membership->status === 'active')<a href="{{ route('partner.dashboard') }}" class="mt-3 inline-block font-semibold text-blue-600">Go to partner dashboard →</a>@endif</div>@else<form method="POST" action="{{ route('partner.marketplace.join', $program) }}" class="mt-6">@csrf<button class="w-full rounded-xl bg-blue-600 px-5 py-3.5 font-bold text-white shadow-sm hover:bg-blue-700">Join Affiliate Program</button></form>@endif<p class="mt-4 text-center text-xs text-slate-400">Program minimum payout: ₦{{ number_format($program->minimum_payout, 2) }}</p></div></aside>
     </div>
 </div>
 </body>
