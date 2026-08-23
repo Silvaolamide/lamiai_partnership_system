@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\PartnershipProgram;
 use App\Models\ProgramPartner;
+use App\Services\PartnerApprovalService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
@@ -26,7 +27,7 @@ class PartnerMarketplaceController extends Controller
         return view('partner.marketplace.index', compact('programs', 'joinedProgramIds'));
     }
 
-    public function show(Request $request, PartnershipProgram $program): View
+    public function show(Request $request, PartnershipProgram $program, PartnerApprovalService $approvalService): View
     {
         abort_unless($program->status === 'active', 404);
 
@@ -40,10 +41,12 @@ class PartnerMarketplaceController extends Controller
             ? ProgramPartner::where('user_id', $request->user()->id)->where('program_id', $program->id)->first()
             : null;
 
-        return view('partner.marketplace.show', compact('program', 'membership'));
+        $approval = $membership ? $approvalService->approvalSummary($membership) : null;
+
+        return view('partner.marketplace.show', compact('program', 'membership', 'approval'));
     }
 
-    public function join(Request $request, PartnershipProgram $program)
+    public function join(Request $request, PartnershipProgram $program, PartnerApprovalService $approvalService)
     {
         abort_unless($program->status === 'active', 404);
 
@@ -59,15 +62,27 @@ class PartnerMarketplaceController extends Controller
             );
         }
 
-        ProgramPartner::create([
+        $partner = ProgramPartner::create([
             'program_id' => $program->id,
             'user_id' => $request->user()->id,
             'partner_code' => 'PENDING-' . Str::upper(Str::random(8)),
             'status' => 'pending',
+            'approval_context' => 'program',
             'joined_at' => now(),
         ]);
 
-        return redirect()->route('partner.marketplace.show', $program)
-            ->with('success', 'Your application has been submitted and is awaiting approval.');
+        $partner = $approvalService->syncProgramEnrollment($partner->load('program'));
+        $approval = $approvalService->approvalSummary($partner);
+
+        if ($partner->status === 'active') {
+            return redirect()->route('partner.marketplace.show', $program)
+                ->with('success', 'You are now an active partner for this program. You can start promoting its products immediately.');
+        }
+
+        $message = $approval['approver']
+            ? 'Your application has been submitted and is awaiting approval from ' . $approval['approver'] . '.'
+            : 'Your application needs additional verification before it can become active.';
+
+        return redirect()->route('partner.marketplace.show', $program)->with('success', $message);
     }
 }
