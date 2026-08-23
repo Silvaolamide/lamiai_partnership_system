@@ -76,16 +76,22 @@ class PartnerController extends Controller
                 $parentPartnerId = $recruiterPartner?->id;
             }
 
+            // Account creation and program membership are separate concepts.
+            // The membership carries its own approval context and policy.
             $partner = ProgramPartner::create([
                 'program_id' => $program->id,
                 'user_id' => $user->id,
                 'partner_code' => 'PENDING-' . Str::upper(Str::random(8)),
                 'status' => 'pending',
+                'approval_context' => 'initial',
                 'parent_partner_id' => $parentPartnerId,
                 'joined_at' => now(),
             ]);
 
-            $approvalService->sync($partner);
+            // Initial registration now follows the same program-specific approval
+            // engine as later program enrollments. Email verification is still
+            // enforced by the verified middleware before partner access.
+            $approvalService->syncProgramEnrollment($partner->load('program'));
         });
 
         event(new Registered($user));
