@@ -45,6 +45,9 @@ class BusinessDashboardController extends Controller
         $businessPaid = (float)BusinessPayout::where('business_id',$ownerId)->whereIn('status',['processed','paid'])->sum('amount');
         $businessRequested = (float)BusinessPayout::where('business_id',$ownerId)->whereIn('status',['requested','approved','processing'])->sum('amount');
 
+        // This is a count of pending program applications, not new partner
+        // accounts. A partner applying to two programs creates two pending
+        // enrollments but remains one person.
         $pendingPartnerApprovals = ProgramPartner::whereIn('program_id', $programIds)
             ->where('status', 'pending')
             ->whereHas('program', fn ($query) => $query->where('owner_id', $ownerId)->where('settings->partner_business_approval_required', true))
@@ -66,9 +69,18 @@ class BusinessDashboardController extends Controller
             $activities->push(['type'=>'sale','date'=>$order->paid_at ?? $order->created_at,'title'=>'Sale made','description'=>($order->customer?->name ?? $order->customer_name ?? 'Customer').' purchased '.($order->items->pluck('product.name')->filter()->join(', ') ?: 'a product'),'partner'=>$order->partner?->user?->name,'amount'=>(float)$order->total,'order'=>$order]);
         }
         foreach ($recruitedPartners as $newPartner) {
-            $activities->push(['type'=>'recruitment','date'=>$newPartner->created_at,'title'=>'Partner recruited','description'=>($newPartner->parentPartner?->user?->name ?? 'A partner').' recruited '.($newPartner->user?->name ?? 'a new partner'),'partner'=>$newPartner->user?->name,'amount'=>null,'order'=>null]);
+            $activities->push(['type'=>'enrollment','date'=>$newPartner->created_at,'title'=>'Program enrollment','description'=>($newPartner->parentPartner?->user?->name ?? 'A partner').' referred '.($newPartner->user?->name ?? 'a partner').' into '.($newPartner->program?->name ?? 'a program'),'partner'=>$newPartner->user?->name,'amount'=>null,'order'=>null]);
         }
         $activities = $activities->sortByDesc('date')->take(15)->values();
+
+        // A business can have the same person enrolled in multiple owned
+        // programs. The headline affiliate/partner metric is therefore based
+        // on distinct users, while each program's partners_count remains a
+        // valid program-specific enrollment count.
+        $uniquePartnerCount = ProgramPartner::whereIn('program_id', $programIds)
+            ->whereNotNull('user_id')
+            ->distinct()
+            ->count('user_id');
 
         $stats = [
             'revenue'=>$grossRevenue,
@@ -77,7 +89,7 @@ class BusinessDashboardController extends Controller
             'paid_commission'=>$paidCommission,
             'pending_commission'=>$pendingCommission,
             'platform_charge'=>$platformChargeTotal,
-            'affiliates'=>$programs->sum('partners_count'),
+            'affiliates'=>$uniquePartnerCount,
             'products'=>$products->count(),
             'programs'=>$programs->count(),
             'business_available'=>$businessAvailable,
