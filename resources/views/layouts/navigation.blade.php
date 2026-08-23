@@ -1,7 +1,15 @@
 @php
     $isAdmin = Auth::check() && Auth::user()->hasRole('super_admin');
     $adminSections = [
-        'Overview' => [['route' => 'admin', 'label' => 'Command Center', 'icon' => 'home']],
+        'Overview' => [
+            ['route' => 'admin', 'label' => 'Command Center', 'icon' => 'home'],
+        ],
+        'Users & Resolution' => [
+            ['route' => 'admin.users.index', 'label' => 'Users & Account Resolution', 'icon' => 'users'],
+            ['route' => 'admin.registrations.index', 'label' => 'Registration Issues', 'icon' => 'clipboard'],
+            ['route' => 'admin.payments.index', 'label' => 'Payment Resolution', 'icon' => 'bank'],
+            ['route' => 'admin.payment-disputes.index', 'label' => 'Payment Disputes', 'icon' => 'warning'],
+        ],
         'Manage' => [
             ['route' => 'admin.businesses.index', 'label' => 'Businesses', 'icon' => 'building'],
             ['route' => 'admin.partners.index', 'label' => 'Partners', 'icon' => 'users'],
@@ -14,9 +22,10 @@
             ['route' => 'admin.payouts.index', 'label' => 'Partner Payouts', 'icon' => 'arrow'],
             ['route' => 'admin.business-payouts.index', 'label' => 'Business Payouts', 'icon' => 'bank'],
         ],
-        'Insights' => [
+        'Insights & Tools' => [
             ['route' => 'admin.analytics.businesses', 'label' => 'Analytics', 'icon' => 'chart'],
             ['route' => 'network.index', 'label' => 'Network', 'icon' => 'network'],
+            ['route' => 'admin.settings', 'label' => 'Settings', 'icon' => 'settings'],
         ],
     ];
 @endphp
@@ -84,7 +93,7 @@
                         <div class="hidden sm:block"><p class="text-[9px] font-black uppercase tracking-[0.2em] text-violet-600">Admin workspace</p><p class="text-sm font-black text-slate-900">{{ request()->routeIs('admin') ? 'Command Center' : Str::headline(request()->route()->getName()) }}</p></div>
                     </div>
                     <div class="flex items-center gap-2 sm:gap-3">
-                        <a href="{{ route('home') }}" target="_blank" class="hidden items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-500 transition hover:border-violet-200 hover:text-violet-700 sm:flex"><svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 3h7v7M10 14 21 3M21 14v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h6"/></svg>View site</a>
+                        <a href="{{ route('home') }}" target="_blank" class="hidden items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-500 transition hover:border-violet-200 hover:text-violet-700 sm:flex"><svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 3h7v7M10 14 21 3M21 14v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h6"/></svg>View site</a>
                         <a href="{{ route('profile.edit') }}" class="flex items-center gap-2 rounded-xl p-1.5 pr-2 transition hover:bg-slate-50"><span class="grid h-9 w-9 place-items-center rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 text-xs font-black text-white">{{ strtoupper(substr(Auth::user()->name,0,1)) }}</span><span class="hidden text-left md:block"><b class="block text-xs font-black text-slate-900">{{ Auth::user()->name }}</b><small class="block text-[10px] text-slate-400">Super Admin</small></span></a>
                         <form method="POST" action="{{ route('logout') }}" class="hidden sm:block">@csrf<button class="rounded-xl p-2.5 text-slate-400 transition hover:bg-red-50 hover:text-red-500" title="Log out"><svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M10 17l5-5-5-5M15 12H3"/><path d="M21 4v16a2 2 0 0 1-2 2h-7"/></svg></button></form>
                     </div>
