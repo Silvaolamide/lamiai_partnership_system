@@ -28,7 +28,39 @@
                     @if(session('bank_transfer_account_created'))
                         <p class="mt-4 font-bold text-emerald-900">Your customer account has been created.</p>
                         @if(session('bank_transfer_password_email_sent'))
+                            @php
+                                $customerEmail = session('bank_transfer_customer_email');
+                                $emailDomain = $customerEmail && str_contains($customerEmail, '@')
+                                    ? strtolower(substr(strrchr($customerEmail, '@'), 1))
+                                    : null;
+
+                                $providerLinks = [
+                                    'gmail.com' => ['https://mail.google.com/', 'Open Gmail'],
+                                    'googlemail.com' => ['https://mail.google.com/', 'Open Gmail'],
+                                    'outlook.com' => ['https://outlook.live.com/mail/', 'Open Outlook'],
+                                    'hotmail.com' => ['https://outlook.live.com/mail/', 'Open Outlook'],
+                                    'live.com' => ['https://outlook.live.com/mail/', 'Open Outlook'],
+                                    'msn.com' => ['https://outlook.live.com/mail/', 'Open Outlook'],
+                                    'yahoo.com' => ['https://mail.yahoo.com/', 'Open Yahoo Mail'],
+                                    'ymail.com' => ['https://mail.yahoo.com/', 'Open Yahoo Mail'],
+                                ];
+
+                                $emailProviderUrl = null;
+                                $emailProviderLabel = 'Open Your Email';
+
+                                if ($emailDomain && isset($providerLinks[$emailDomain])) {
+                                    [$emailProviderUrl, $emailProviderLabel] = $providerLinks[$emailDomain];
+                                } elseif ($emailDomain) {
+                                    $emailProviderUrl = 'https://' . $emailDomain;
+                                }
+                            @endphp
+
                             <p class="mt-1 leading-6 text-emerald-800">We also sent you an email to set your password.</p>
+                            @if($emailProviderUrl)
+                                <a href="{{ $emailProviderUrl }}" target="_blank" rel="noopener noreferrer" class="mt-4 inline-flex items-center justify-center rounded-xl bg-violet-600 px-5 py-3 font-black text-white shadow-sm transition hover:bg-violet-700">
+                                    {{ $emailProviderLabel }} →
+                                </a>
+                            @endif
                         @else
                             <p class="mt-1 leading-6 text-emerald-800">Please use the password reset option on the customer login page to set your password.</p>
                         @endif
