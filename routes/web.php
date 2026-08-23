@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\CommissionController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\OrderController;
 use App\Http\Controllers\Admin\PartnerController as AdminPartnerController;
+use App\Http\Controllers\Admin\PartnerResolutionController;
 use App\Http\Controllers\Admin\PayoutController as AdminPayoutController;
 use App\Http\Controllers\Admin\PaymentController as AdminPaymentController;
 use App\Http\Controllers\Admin\PaymentDisputeController as AdminPaymentDisputeController;
@@ -79,6 +80,7 @@ Route::middleware(['auth', 'role:super_admin'])->prefix('admin')->group(function
     Route::get('/realtime/sales', [AdminDashboardController::class, 'realtimeSales'])->name('admin.realtime.sales');
     Route::get('/users', [AdminUserManagementController::class, 'index'])->name('admin.users.index');
     Route::get('/users/{user}', [AdminUserManagementController::class, 'show'])->name('admin.users.show');
+    Route::get('/users/{user}/partner-resolution', [PartnerResolutionController::class, 'show'])->name('admin.users.partner-resolution');
     Route::get('/users/{user}/edit', [AdminUserManagementController::class, 'edit'])->name('admin.users.edit');
     Route::put('/users/{user}', [AdminUserManagementController::class, 'update'])->name('admin.users.update');
     Route::patch('/users/{user}/verify-email', [AdminUserManagementController::class, 'verifyEmail'])->name('admin.users.verify-email');
