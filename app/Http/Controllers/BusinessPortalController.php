@@ -13,10 +13,7 @@ use Illuminate\View\View;
 
 class BusinessPortalController extends Controller
 {
-    private function owner(Request $request): int
-    {
-        return (int) $request->user()->id;
-    }
+    private function owner(Request $request): int { return (int) $request->user()->id; }
 
     private function program(Request $request, PartnershipProgram $program): PartnershipProgram
     {
@@ -65,6 +62,7 @@ class BusinessPortalController extends Controller
 
         $settings = $program->settings ?? [];
         $settings['partner_business_approval_required'] = $request->boolean('partner_business_approval_required');
+        $settings['partner_super_admin_approval_required'] = $request->boolean('partner_super_admin_approval_required');
 
         $program->update([
             'name' => $data['name'], 'description' => $data['description'] ?? null,
@@ -94,139 +92,64 @@ class BusinessPortalController extends Controller
 
     public function products(Request $request): View
     {
-        $products = Product::where('owner_id', $this->owner($request))
-            ->withCount('partnershipPrograms')->with('partnershipPrograms')->latest()->paginate(12);
+        $products = Product::where('owner_id', $this->owner($request))->withCount('partnershipPrograms')->with('partnershipPrograms')->latest()->paginate(12);
         return view('business.products.index', compact('products'));
     }
 
-    public function createProduct(): View
-    {
-        return view('business.products.create', ['landingPages' => config('landing_pages', [])]);
-    }
+    public function createProduct(): View { return view('business.products.create', ['landingPages' => config('landing_pages', [])]); }
 
     public function storeProduct(Request $request)
     {
         $data = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
-            'sku' => ['nullable', 'string', 'max:255', 'unique:products,sku'],
-            'price' => ['required', 'numeric', 'min:0'],
-            'currency' => ['required', 'string', 'max:10'],
-            'status' => ['required', 'in:draft,active,inactive'],
+            'name' => ['required', 'string', 'max:255'], 'description' => ['nullable', 'string'],
+            'sku' => ['nullable', 'string', 'max:255', 'unique:products,sku'], 'price' => ['required', 'numeric', 'min:0'],
+            'currency' => ['required', 'string', 'max:10'], 'status' => ['required', 'in:draft,active,inactive'],
             'landing_page' => ['nullable', 'string', 'in:'.implode(',', array_keys(config('landing_pages', [])))],
-            'delivery_type' => ['nullable', 'string', 'in:link,video,ebook,download,course'],
-            'delivery_url' => ['nullable', 'url:http,https'],
+            'delivery_type' => ['nullable', 'string', 'in:link,video,ebook,download,course'], 'delivery_url' => ['nullable', 'url:http,https'],
             'delivery_label' => ['nullable', 'string', 'max:120'],
         ]);
-
-        $base = Str::slug($data['name']);
-        $slug = $base; $i = 1;
-        while (Product::where('slug', $slug)->exists()) $slug = $base.'-'.(++$i);
-
-        $data['slug'] = $slug;
-        $data['owner_id'] = $this->owner($request);
-        $landingPage = $data['landing_page'] ?? 'classic';
-        $deliveryType = $data['delivery_type'] ?? null;
-        $deliveryUrl = $data['delivery_url'] ?? null;
-        $deliveryLabel = $data['delivery_label'] ?? null;
+        $base = Str::slug($data['name']); $slug = $base; $i = 1; while (Product::where('slug', $slug)->exists()) $slug = $base.'-'.(++$i);
+        $data['slug'] = $slug; $data['owner_id'] = $this->owner($request);
+        $landingPage = $data['landing_page'] ?? 'classic'; $deliveryType = $data['delivery_type'] ?? null; $deliveryUrl = $data['delivery_url'] ?? null; $deliveryLabel = $data['delivery_label'] ?? null;
         unset($data['landing_page'], $data['delivery_type'], $data['delivery_url'], $data['delivery_label']);
-
-        $data['metadata'] = [
-            'landing_page' => $landingPage,
-            'delivery' => [
-                'type' => $deliveryType,
-                'url' => $deliveryUrl,
-                'label' => $deliveryLabel ?: match ($deliveryType) {
-                    'ebook' => 'Read / download ebook',
-                    'video' => 'Watch video',
-                    'course' => 'Open course',
-                    'download' => 'Download product',
-                    'link' => 'Open product',
-                    default => 'Access product',
-                },
-            ],
-        ];
-
+        $data['metadata'] = ['landing_page' => $landingPage, 'delivery' => ['type' => $deliveryType, 'url' => $deliveryUrl, 'label' => $deliveryLabel ?: match ($deliveryType) { 'ebook' => 'Read / download ebook', 'video' => 'Watch video', 'course' => 'Open course', 'download' => 'Download product', 'link' => 'Open product', default => 'Access product' }]];
         Product::create($data);
         return redirect()->route('business.products.index')->with('success', 'Product created successfully.');
     }
 
     public function editProduct(Request $request, Product $product): View
     {
-        $product = $this->product($request, $product)->load('partnershipPrograms');
-        $delivery = is_array($product->metadata) ? ($product->metadata['delivery'] ?? []) : [];
-
-        return view('business.products.edit', [
-            'product' => $product,
-            'landingPages' => config('landing_pages', []),
-            'selectedLandingPage' => data_get($product->metadata, 'landing_page', 'classic'),
-            'deliveryType' => $delivery['type'] ?? null,
-            'deliveryUrl' => $delivery['url'] ?? null,
-            'deliveryLabel' => $delivery['label'] ?? null,
-        ]);
+        $product = $this->product($request, $product)->load('partnershipPrograms'); $delivery = is_array($product->metadata) ? ($product->metadata['delivery'] ?? []) : [];
+        return view('business.products.edit', ['product' => $product, 'landingPages' => config('landing_pages', []), 'selectedLandingPage' => data_get($product->metadata, 'landing_page', 'classic'), 'deliveryType' => $delivery['type'] ?? null, 'deliveryUrl' => $delivery['url'] ?? null, 'deliveryLabel' => $delivery['label'] ?? null]);
     }
 
     public function updateProduct(Request $request, Product $product)
     {
         $product = $this->product($request, $product);
-        $data = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
-            'sku' => ['nullable', 'string', 'max:255', 'unique:products,sku,'.$product->id],
-            'price' => ['required', 'numeric', 'min:0'],
-            'currency' => ['required', 'string', 'max:10'],
-            'status' => ['required', 'in:draft,active,inactive'],
-            'landing_page' => ['nullable', 'string', 'in:'.implode(',', array_keys(config('landing_pages', [])))],
-            'delivery_type' => ['nullable', 'string', 'in:link,video,ebook,download,course'],
-            'delivery_url' => ['nullable', 'url:http,https'],
-            'delivery_label' => ['nullable', 'string', 'max:120'],
-        ]);
-
-        $metadata = is_array($product->metadata) ? $product->metadata : [];
-        $metadata['landing_page'] = $data['landing_page'] ?? 'classic';
-        $metadata['delivery'] = [
-            'type' => $data['delivery_type'] ?? null,
-            'url' => $data['delivery_url'] ?? null,
-            'label' => $data['delivery_label'] ?: match ($data['delivery_type'] ?? null) {
-                'ebook' => 'Read / download ebook',
-                'video' => 'Watch video',
-                'course' => 'Open course',
-                'download' => 'Download product',
-                'link' => 'Open product',
-                default => 'Access product',
-            },
-        ];
-
-        unset($data['landing_page'], $data['delivery_type'], $data['delivery_url'], $data['delivery_label']);
-        $data['metadata'] = $metadata;
-        $product->update($data);
-
+        $data = $request->validate(['name' => ['required', 'string', 'max:255'], 'description' => ['nullable', 'string'], 'sku' => ['nullable', 'string', 'max:255', 'unique:products,sku,'.$product->id], 'price' => ['required', 'numeric', 'min:0'], 'currency' => ['required', 'string', 'max:10'], 'status' => ['required', 'in:draft,active,inactive'], 'landing_page' => ['nullable', 'string', 'in:'.implode(',', array_keys(config('landing_pages', [])))], 'delivery_type' => ['nullable', 'string', 'in:link,video,ebook,download,course'], 'delivery_url' => ['nullable', 'url:http,https'], 'delivery_label' => ['nullable', 'string', 'max:120']]);
+        $metadata = is_array($product->metadata) ? $product->metadata : []; $metadata['landing_page'] = $data['landing_page'] ?? 'classic'; $metadata['delivery'] = ['type' => $data['delivery_type'] ?? null, 'url' => $data['delivery_url'] ?? null, 'label' => $data['delivery_label'] ?: match ($data['delivery_type'] ?? null) { 'ebook' => 'Read / download ebook', 'video' => 'Watch video', 'course' => 'Open course', 'download' => 'Download product', 'link' => 'Open product', default => 'Access product' }];
+        unset($data['landing_page'], $data['delivery_type'], $data['delivery_url'], $data['delivery_label']); $data['metadata'] = $metadata; $product->update($data);
         return redirect()->route('business.products.index')->with('success', 'Product updated successfully.');
     }
 
     public function affiliates(Request $request): View
     {
         $programIds = PartnershipProgram::where('owner_id', $this->owner($request))->pluck('id');
-        $affiliates = ProgramPartner::whereIn('program_id', $programIds)
-            ->with(['user', 'program'])->withCount(['orders', 'commissions'])
-            ->latest()->paginate(20);
+        $affiliates = ProgramPartner::whereIn('program_id', $programIds)->with(['user', 'program'])->withCount(['orders', 'commissions'])->latest()->paginate(20);
         return view('business.affiliates.index', compact('affiliates'));
     }
 
     public function sales(Request $request): View
     {
         $programIds = PartnershipProgram::where('owner_id', $this->owner($request))->pluck('id');
-        $orders = Order::whereIn('program_id', $programIds)
-            ->with(['program', 'partner.user', 'customer', 'items.product'])
-            ->latest()->paginate(20);
+        $orders = Order::whereIn('program_id', $programIds)->with(['program', 'partner.user', 'customer', 'items.product'])->latest()->paginate(20);
         return view('business.sales.index', compact('orders'));
     }
 
     public function commissions(Request $request): View
     {
         $programIds = PartnershipProgram::where('owner_id', $this->owner($request))->pluck('id');
-        $commissions = Commission::whereIn('program_id', $programIds)
-            ->with(['partner.user', 'program', 'order'])->latest()->paginate(20);
+        $commissions = Commission::whereIn('program_id', $programIds)->with(['partner.user', 'program', 'order'])->latest()->paginate(20);
         $total = Commission::whereIn('program_id', $programIds)->whereNotIn('status', ['reversed','cancelled'])->sum('commission_amount');
         $paid = Commission::whereIn('program_id', $programIds)->where('status', 'paid')->sum('commission_amount');
         $payable = Commission::whereIn('program_id', $programIds)->whereIn('status', ['available','approved','payable'])->sum('commission_amount');
