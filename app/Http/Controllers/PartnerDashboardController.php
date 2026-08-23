@@ -90,7 +90,10 @@ class PartnerDashboardController extends Controller
                 'partner' => $partner,
                 'program' => $partner->program,
                 'stats' => $stats,
-                'recruited_partners_count' => $partner->childPartners()->count(),
+                // This is program-specific: the same person may legitimately
+                // appear in several program trees, so the overall dashboard
+                // deduplicates recruits separately below.
+                'recruited_partners_count' => $partner->childPartners()->distinct('user_id')->count('user_id'),
                 'total_orders' => $orders->count(),
                 'paid_orders' => $paidOrders->count(),
                 'pending_payment_confirmations' => $pendingPaymentConfirmations,
@@ -112,13 +115,22 @@ class PartnerDashboardController extends Controller
         $allProducts = $programStats->flatMap(fn ($program) => $program['product_performance']);
         $topProducts = $allProducts->sortByDesc('revenue')->values();
 
+        // A recruit is a unique person, not a ProgramPartner membership. If
+        // the same downline partner participates in two of our programs, they
+        // must still count as one recruited partner on the overall dashboard.
+        $totalRecruited = ProgramPartner::query()
+            ->whereIn('parent_partner_id', $partners->pluck('id'))
+            ->whereNotNull('user_id')
+            ->distinct()
+            ->count('user_id');
+
         return view('partner.dashboard', [
             'programStats' => $programStats,
             'totalPending' => (float) $programStats->sum(fn ($p) => $p['stats']['pending']),
             'totalPaid' => (float) $programStats->sum(fn ($p) => $p['stats']['paid']),
             'totalSales' => (int) $programStats->sum('paid_orders'),
             'totalSalesAmount' => (float) $programStats->sum('paid_sales_amount'),
-            'totalRecruited' => (int) $programStats->sum('recruited_partners_count'),
+            'totalRecruited' => (int) $totalRecruited,
             'totalNetBusinessRevenue' => (float) $programStats->sum('net_business_revenue'),
             'totalPendingPaymentConfirmations' => (int) $programStats->sum('pending_payment_confirmations'),
             'topProducts' => $topProducts,
