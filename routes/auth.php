@@ -10,6 +10,7 @@ use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\VerifyEmailController;
+use App\Http\Controllers\AdminMarketingCampaignController;
 use App\Http\Controllers\BusinessMarketingCampaignController;
 use App\Http\Controllers\MarketerRecruitmentController;
 use Illuminate\Support\Facades\Route;
@@ -60,4 +61,7 @@ Route::middleware(['auth', 'business.approved'])->prefix('business')->group(func
 Route::middleware(['auth', 'role:super_admin'])->prefix('admin')->group(function () {
     Route::get('/marketer-recruitment', [MarketerRecruitmentController::class, 'admin'])->name('admin.marketer-recruitment');
     Route::put('/marketer-recruitment/settings', [MarketerRecruitmentController::class, 'updateSettings'])->name('admin.marketer-recruitment.settings');
+    Route::get('/marketing-campaigns', [AdminMarketingCampaignController::class, 'index'])->name('admin.marketing-campaigns.index');
+    Route::get('/marketing-campaigns/{campaign}/leads', [AdminMarketingCampaignController::class, 'leads'])->name('admin.marketing-campaigns.leads');
+    Route::get('/marketing-campaigns/{campaign}/download', [AdminMarketingCampaignController::class, 'download'])->name('admin.marketing-campaigns.download');
 });
