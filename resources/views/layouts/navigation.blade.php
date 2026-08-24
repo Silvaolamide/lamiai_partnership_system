@@ -16,6 +16,10 @@
             ['route' => 'admin.programs.index', 'label' => 'Programs', 'icon' => 'layers'],
             ['route' => 'admin.products.index', 'label' => 'Products', 'icon' => 'box'],
         ],
+        'Marketing' => [
+            ['route' => 'admin.marketing-campaigns.index', 'label' => 'Marketing Campaigns', 'icon' => 'chart'],
+            ['route' => 'admin.marketer-recruitment', 'label' => 'Marketer Recruitment', 'icon' => 'users'],
+        ],
         'Money & Activity' => [
             ['route' => 'admin.orders.index', 'label' => 'Orders', 'icon' => 'shopping'],
             ['route' => 'admin.commissions.index', 'label' => 'Commissions', 'icon' => 'wallet'],
@@ -104,7 +108,15 @@
         <header class="border-b border-slate-200/80 bg-white/90 backdrop-blur-xl">
             <div class="mx-auto flex h-[70px] max-w-[1600px] items-center justify-between px-4 sm:px-6 lg:px-8">
                 <a href="{{ route('dashboard') }}" class="flex items-center gap-3"><span class="grid h-10 w-10 place-items-center rounded-[13px] bg-slate-950 text-[10px] font-black text-white">AIPM</span><span class="hidden text-sm font-black text-slate-950 sm:inline">AI Powered <span class="text-violet-600">Marketing</span></span></a>
-                <div class="flex items-center gap-2"><a href="{{ route('profile.edit') }}" class="rounded-xl px-3 py-2 text-sm font-bold text-slate-600 hover:bg-slate-50">{{ Auth::user()->name }}</a><form method="POST" action="{{ route('logout') }}">@csrf<button class="rounded-xl px-3 py-2 text-sm font-bold text-slate-400 hover:bg-red-50 hover:text-red-500">Log out</button></form></div>
+                <div class="flex items-center gap-2">
+                    @if(Auth::user()->hasRole('program_manager'))
+                        <a href="{{ route('business.dashboard') }}" class="rounded-xl px-3 py-2 text-sm font-bold {{ request()->routeIs('business.dashboard') ? 'bg-teal-50 text-teal-700' : 'text-slate-600 hover:bg-slate-50' }}">Dashboard</a>
+                        <a href="{{ route('business.campaigns.index') }}" class="rounded-xl px-3 py-2 text-sm font-bold {{ request()->routeIs('business.campaigns.*') ? 'bg-teal-50 text-teal-700' : 'text-slate-600 hover:bg-slate-50' }}">Marketing Campaigns</a>
+                        <a href="{{ route('business.campaigns.create') }}" class="hidden rounded-xl bg-teal-600 px-3 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-teal-700 sm:inline-flex">Create Campaign</a>
+                    @endif
+                    <a href="{{ route('profile.edit') }}" class="rounded-xl px-3 py-2 text-sm font-bold text-slate-600 hover:bg-slate-50">{{ Auth::user()->name }}</a>
+                    <form method="POST" action="{{ route('logout') }}">@csrf<button class="rounded-xl px-3 py-2 text-sm font-bold text-slate-400 hover:bg-red-50 hover:text-red-500">Log out</button></form>
+                </div>
             </div>
         </header>
     @endif
