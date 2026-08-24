@@ -17,7 +17,17 @@
                                 @if($product->featured_image)<img src="{{ Storage::url($product->featured_image) }}" alt="{{ $product->name }}" class="h-full w-full object-cover transition duration-300 group-hover:scale-105">@else<div class="grid h-full place-items-center bg-gradient-to-br from-slate-100 to-blue-50 text-4xl font-black text-blue-200">{{ strtoupper(substr($product->name,0,1)) }}</div>@endif
                                 <span class="absolute bottom-3 left-3 rounded-full bg-white/95 px-3 py-1 text-xs font-black text-slate-800 shadow-sm">{{ $product->currency }} {{ number_format($product->price, 2) }}</span>
                             </a>
-                            <div class="p-5"><h3 class="text-lg font-black">{{ $product->name }}</h3><p class="mt-2 min-h-12 text-sm leading-6 text-slate-500">{{ Str::limit($product->description, 100) }}</p><a href="{{ route('product.show', ['slug' => $product->slug]) }}" target="_blank" rel="noopener noreferrer" class="mt-4 inline-flex text-sm font-black text-blue-600">Preview sales page ↗</a></div>
+                            <div class="p-5"><h3 class="text-lg font-black">{{ $product->name }}</h3><p class="mt-2 min-h-12 text-sm leading-6 text-slate-500">{{ Str::limit($product->description, 100) }}</p>
+                                <div class="mt-4 rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
+                                    <p class="text-[11px] font-black uppercase tracking-wider text-emerald-700">Why promote this product</p>
+                                    <div class="mt-3 grid grid-cols-2 gap-2">
+                                        <div class="rounded-xl bg-white p-3"><span class="block text-[10px] font-bold uppercase tracking-wide text-slate-400">Direct sale</span><strong class="mt-1 block text-base text-emerald-700">{{ $level1 ? ($level1->commission_type === 'percentage' ? rtrim(rtrim(number_format($level1->value, 2), '0'), '.').'%' : '₦'.number_format($level1->value, 2)) : '—' }}</strong></div>
+                                        <div class="rounded-xl bg-white p-3"><span class="block text-[10px] font-bold uppercase tracking-wide text-slate-400">Recruiter bonus</span><strong class="mt-1 block text-base text-violet-700">{{ $level2 ? ($level2->commission_type === 'percentage' ? rtrim(rtrim(number_format($level2->value, 2), '0'), '.').'%' : '₦'.number_format($level2->value, 2)) : '—' }}</strong></div>
+                                    </div>
+                                    <div class="mt-3 flex flex-wrap gap-2 text-[11px] font-semibold text-slate-500"><span class="rounded-full bg-white px-2.5 py-1">{{ $program->attribution_window_days }} day attribution</span><span class="rounded-full bg-white px-2.5 py-1">Min payout ₦{{ number_format($program->minimum_payout, 2) }}</span></div>
+                                </div>
+                                <a href="{{ route('product.show', ['slug' => $product->slug]) }}" target="_blank" rel="noopener noreferrer" class="mt-4 inline-flex text-sm font-black text-blue-600">Preview sales page ↗</a>
+                            </div>
                         </article>
                     @empty
                         <p class="sm:col-span-2 rounded-2xl bg-slate-50 p-5 text-sm text-slate-500">No products are currently attached to this program.</p>
