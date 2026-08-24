@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\MarketingCampaign;
 use App\Models\MarketingCampaignLead;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -44,6 +45,27 @@ class BusinessMarketingCampaignController extends Controller
             $out[] = ['id' => $id, 'label' => $label, 'type' => $type, 'required' => !empty($q['required']), 'options' => $options];
         }
         return array_slice($out, 0, 12);
+    }
+
+    private function normalizeEmail(string $email): string
+    {
+        return strtolower(trim($email));
+    }
+
+    private function normalizeWhatsapp(string $phone): string
+    {
+        $phone = preg_replace('/[^0-9+]/', '', trim($phone));
+        if (str_starts_with($phone, '00')) {
+            $phone = '+' . substr($phone, 2);
+        }
+        // Normalize Nigerian local numbers so 0703..., 703..., 234703... and +234703...
+        // are treated as the same WhatsApp number. Other international numbers are kept in E.164-like form.
+        if (str_starts_with($phone, '0') && strlen($phone) === 11) {
+            $phone = '+234' . substr($phone, 1);
+        } elseif (str_starts_with($phone, '234') && !str_starts_with($phone, '+')) {
+            $phone = '+' . $phone;
+        }
+        return $phone;
     }
 
     public function index(Request $request): View
@@ -114,7 +136,16 @@ class BusinessMarketingCampaignController extends Controller
     public function submit(Request $request, MarketingCampaign $campaign): RedirectResponse
     {
         abort_unless($campaign->status === 'active', 404);
-        $rules = ['name' => ['required', 'string', 'min:2', 'max:120'], 'whatsapp_number' => ['required', 'string', 'min:7', 'max:50'], 'email' => ['required', 'email', 'max:255'], 'utm_source' => ['nullable', 'string', 'max:255'], 'utm_medium' => ['nullable', 'string', 'max:255'], 'utm_campaign' => ['nullable', 'string', 'max:255'], 'utm_content' => ['nullable', 'string', 'max:255'], 'utm_term' => ['nullable', 'string', 'max:255'], 'website' => ['nullable', 'max:0']];
+
+        $rules = [
+            'name' => ['required', 'string', 'min:2', 'max:120'],
+            'whatsapp_number' => ['required', 'string', 'min:7', 'max:50'],
+            'email' => ['required', 'email', 'max:255'],
+            'utm_source' => ['nullable', 'string', 'max:255'], 'utm_medium' => ['nullable', 'string', 'max:255'],
+            'utm_campaign' => ['nullable', 'string', 'max:255'], 'utm_content' => ['nullable', 'string', 'max:255'],
+            'utm_term' => ['nullable', 'string', 'max:255'], 'website' => ['nullable', 'max:0'],
+        ];
+
         foreach ($campaign->configuredQuestions() as $q) {
             $key = 'q_'.$q['id'];
             if ($q['type'] === 'email') $rules[$key] = $q['required'] ? ['required','email','max:255'] : ['nullable','email','max:255'];
@@ -122,20 +153,81 @@ class BusinessMarketingCampaignController extends Controller
             elseif ($q['type'] === 'single_choice') $rules[$key] = $q['required'] ? ['required','string','in:'.implode(',', $q['options'])] : ['nullable','string','in:'.implode(',', $q['options'])];
             else $rules[$key] = $q['required'] ? ['required','string','max:2000'] : ['nullable','string','max:2000'];
         }
-        $data = $request->validate($rules);
-        $responses = [];
-        foreach ($campaign->configuredQuestions() as $q) if (array_key_exists('q_'.$q['id'], $data)) $responses[$q['id']] = $data['q_'.$q['id']];
-        $lead = ['campaign_id' => $campaign->id, 'name' => $data['name'], 'whatsapp_number' => $data['whatsapp_number'], 'email' => $data['email'], 'utm_source' => $data['utm_source'] ?? null, 'utm_medium' => $data['utm_medium'] ?? null, 'utm_campaign' => $data['utm_campaign'] ?? null, 'utm_content' => $data['utm_content'] ?? null, 'utm_term' => $data['utm_term'] ?? null, 'landing_page' => $request->headers->get('referer'), 'ip_address' => $request->ip(), 'user_agent' => $request->userAgent(), 'responses' => $responses];
-        $lead['has_sold_online'] = isset($responses['has_sold_online']) ? $responses['has_sold_online'] === 'Yes' : false;
-        $lead['what_sold'] = $responses['what_sold'] ?? null;
-        $lead['sales_result'] = isset($responses['sales_result']) ? ['Very good' => 'very_good', 'Good' => 'good', 'Not good' => 'not_good'][$responses['sales_result']] ?? null : null;
-        MarketingCampaignLead::create($lead);
 
+        $data = $request->validate($rules);
+        $normalizedEmail = $this->normalizeEmail($data['email']);
+        $normalizedWhatsapp = $this->normalizeWhatsapp($data['whatsapp_number']);
+
+        // Check existing records as well as the database unique indexes. This catches older
+        // leads created before normalization was introduced (e.g. 0703... vs +234703...).
+        $duplicate = $campaign->leads()
+            ->where(function ($query) use ($normalizedEmail, $normalizedWhatsapp) {
+                $query->where('normalized_email', $normalizedEmail)
+                    ->orWhere('normalized_whatsapp', $normalizedWhatsapp);
+            })->exists();
+
+        if (!$duplicate) {
+            $duplicate = $campaign->leads()->get(['email', 'whatsapp_number'])->contains(function ($lead) use ($normalizedEmail, $normalizedWhatsapp) {
+                return $this->normalizeEmail((string) $lead->email) === $normalizedEmail
+                    || $this->normalizeWhatsapp((string) $lead->whatsapp_number) === $normalizedWhatsapp;
+            });
+        }
+
+        if ($duplicate) {
+            return back()->withInput()->withErrors([
+                'duplicate' => 'You have already submitted this application. We already have your details for this campaign.'
+            ]);
+        }
+
+        $responses = [];
+        foreach ($campaign->configuredQuestions() as $q) {
+            if (array_key_exists('q_'.$q['id'], $data)) {
+                $responses[$q['id']] = $data['q_'.$q['id']];
+            }
+        }
+
+        $lead = [
+            'campaign_id' => $campaign->id,
+            'name' => $data['name'],
+            'whatsapp_number' => $data['whatsapp_number'],
+            'email' => $data['email'],
+            'normalized_email' => $normalizedEmail,
+            'normalized_whatsapp' => $normalizedWhatsapp,
+            'utm_source' => $data['utm_source'] ?? null, 'utm_medium' => $data['utm_medium'] ?? null,
+            'utm_campaign' => $data['utm_campaign'] ?? null, 'utm_content' => $data['utm_content'] ?? null,
+            'utm_term' => $data['utm_term'] ?? null, 'landing_page' => $request->headers->get('referer'),
+            'ip_address' => $request->ip(), 'user_agent' => $request->userAgent(), 'responses' => $responses,
+            'has_sold_online' => isset($responses['has_sold_online']) ? $responses['has_sold_online'] === 'Yes' : false,
+            'what_sold' => $responses['what_sold'] ?? null,
+            'sales_result' => isset($responses['sales_result']) ? ['Very good' => 'very_good', 'Good' => 'good', 'Not good' => 'not_good'][$responses['sales_result']] ?? null : null,
+        ];
+
+        try {
+            MarketingCampaignLead::create($lead);
+        } catch (QueryException $e) {
+            // A concurrent double-click/request can race the application-level check;
+            // the unique campaign/email and campaign/WhatsApp indexes make this safe.
+            if ((int) $e->getCode() === 23000) {
+                return back()->withInput()->withErrors([
+                    'duplicate' => 'You have already submitted this application. We already have your details for this campaign.'
+                ]);
+            }
+            throw $e;
+        }
+
+        session()->flash('campaign_submission_'.$campaign->id, true);
         return redirect()->route('marketing.campaign.success', $campaign);
     }
 
-    public function success(MarketingCampaign $campaign): View
+    public function success(Request $request, MarketingCampaign $campaign): View|RedirectResponse
     {
+        $sessionKey = 'campaign_submission_'.$campaign->id;
+        abort_unless($campaign->status === 'active', 404);
+
+        if (!$request->session()->pull($sessionKey, false)) {
+            return redirect()->route('marketing.campaign.show', $campaign);
+        }
+
         return view('marketing-campaign.success', compact('campaign'));
     }
 }
