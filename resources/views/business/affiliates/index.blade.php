@@ -3,7 +3,7 @@
 @section('heading','Affiliates')
 @section('content')
 <div class="mb-6">
-    <p class="text-slate-500">Manage unique people selling through your affiliate programs. Each program enrollment is shown separately under the partner.</p>
+    <p class="text-slate-500">Manage unique people selling through your affiliate programs. Each program enrollment is shown separately under the partner, including the products available through that program.</p>
 </div>
 
 <div class="bg-white border rounded-2xl shadow-soft overflow-hidden">
@@ -12,7 +12,7 @@
             <thead class="bg-slate-50 text-xs uppercase tracking-wider text-slate-400">
                 <tr>
                     <th class="text-left p-4">Partner</th>
-                    <th class="text-left p-4">Program enrollments</th>
+                    <th class="text-left p-4">Program enrollments & products</th>
                     <th class="text-left p-4">Orders</th>
                     <th class="text-left p-4">Commissions</th>
                     <th class="text-left p-4">Programs</th>
@@ -25,7 +25,7 @@
                             <b>{{ $affiliate->name }}</b>
                             <p class="text-xs text-slate-400">{{ $affiliate->email }}</p>
                         </td>
-                        <td class="p-4 min-w-[420px]">
+                        <td class="p-4 min-w-[520px]">
                             <div class="space-y-3">
                                 @foreach($affiliate->affiliate_memberships as $membership)
                                     @php($businessApproval = (bool) ($membership->program?->settings['partner_business_approval_required'] ?? false))
@@ -37,6 +37,25 @@
                                             </div>
                                             <span class="rounded-full px-3 py-1 text-xs font-black {{ $membership->status === 'active' ? 'bg-emerald-100 text-emerald-700' : ($membership->status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700') }}">{{ strtoupper($membership->status) }}</span>
                                         </div>
+
+                                        <div class="mt-3 rounded-lg border border-slate-200 bg-white p-3">
+                                            <div class="flex items-center justify-between gap-3">
+                                                <p class="text-[11px] font-black uppercase tracking-wider text-slate-400">Products in this program</p>
+                                                <span class="text-[11px] font-bold text-slate-400">{{ $membership->program?->products?->count() ?? 0 }}</span>
+                                            </div>
+                                            @if(($membership->program?->products?->count() ?? 0) > 0)
+                                                <div class="mt-2 flex flex-wrap gap-2">
+                                                    @foreach($membership->program->products as $product)
+                                                        <span class="inline-flex items-center rounded-lg bg-teal-50 px-2.5 py-1.5 text-xs font-bold text-teal-800 ring-1 ring-inset ring-teal-100">
+                                                            {{ $product->name }}
+                                                        </span>
+                                                    @endforeach
+                                                </div>
+                                            @else
+                                                <p class="mt-2 text-xs text-slate-400">No products are currently attached to this program.</p>
+                                            @endif
+                                        </div>
+
                                         @if($businessApproval && $membership->status === 'pending')
                                             <p class="text-[11px] text-slate-400 mt-2">
                                                 {{ $membership->business_approved_at ? 'Business approved' : 'Business approval required' }}
