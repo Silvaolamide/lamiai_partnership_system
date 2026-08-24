@@ -21,7 +21,9 @@ class ProductMarketplaceController extends Controller
             ->where('status', 'active')
             ->with([
                 'owner',
-                'partnershipPrograms' => fn ($q) => $q->where('status', 'active')->orderBy('name'),
+                'partnershipPrograms' => fn ($q) => $q->where('status', 'active')->with([
+                    'commissionRules' => fn ($rules) => $rules->where('status', true)->where('event', 'sale')->orderBy('level')->orderByDesc('priority'),
+                ])->orderBy('name'),
             ])
             ->withCount([
                 'orderItems as paid_units_sold' => fn ($q) => $q->whereHas('order', fn ($order) => $order->where('status', 'paid')),
