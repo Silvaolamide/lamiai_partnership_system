@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class MarketingCampaignLead extends Model
 {
     protected $fillable = [
-        'campaign_id', 'name', 'whatsapp_number', 'email', 'has_sold_online', 'what_sold',
+        'campaign_id', 'name', 'whatsapp_number', 'email', 'normalized_email', 'normalized_whatsapp', 'has_sold_online', 'what_sold',
         'sales_result', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term',
         'landing_page', 'ip_address', 'user_agent', 'responses',
     ];
