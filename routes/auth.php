@@ -39,14 +39,13 @@ Route::middleware('auth')->group(function () {
     Route::post('logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
 });
 
-// Existing marketer recruitment funnel.
 Route::get('/marketer-recruitment', [MarketerRecruitmentController::class, 'show'])->name('marketer.recruitment');
 Route::post('/marketer-recruitment', [MarketerRecruitmentController::class, 'store'])->middleware('throttle:10,1')->name('marketer.recruitment.store');
 Route::get('/marketer-recruitment/thank-you', [MarketerRecruitmentController::class, 'thankYou'])->name('marketer.recruitment.thank-you');
 
-// Public campaign funnel. Each business gets its own shareable URL.
 Route::get('/campaign/{campaign:slug}', [BusinessMarketingCampaignController::class, 'show'])->name('marketing.campaign.show');
 Route::post('/campaign/{campaign:slug}', [BusinessMarketingCampaignController::class, 'submit'])->middleware('throttle:10,1')->name('marketing.campaign.submit');
+Route::get('/campaign/{campaign:slug}/success', [BusinessMarketingCampaignController::class, 'success'])->name('marketing.campaign.success');
 
 Route::middleware(['auth', 'business.approved'])->prefix('business')->group(function () {
     Route::get('/campaigns', [BusinessMarketingCampaignController::class, 'index'])->name('business.campaigns.index');
