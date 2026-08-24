@@ -10,6 +10,7 @@ use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\VerifyEmailController;
+use App\Http\Controllers\BusinessMarketingCampaignController;
 use App\Http\Controllers\MarketerRecruitmentController;
 use Illuminate\Support\Facades\Route;
 
@@ -38,10 +39,24 @@ Route::middleware('auth')->group(function () {
     Route::post('logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
 });
 
-// Marketer recruitment funnel. Kept isolated here so the feature can be developed safely on its own branch.
+// Existing marketer recruitment funnel.
 Route::get('/marketer-recruitment', [MarketerRecruitmentController::class, 'show'])->name('marketer.recruitment');
 Route::post('/marketer-recruitment', [MarketerRecruitmentController::class, 'store'])->middleware('throttle:10,1')->name('marketer.recruitment.store');
 Route::get('/marketer-recruitment/thank-you', [MarketerRecruitmentController::class, 'thankYou'])->name('marketer.recruitment.thank-you');
+
+// Public campaign funnel. Each business gets its own shareable URL.
+Route::get('/campaign/{campaign:slug}', [BusinessMarketingCampaignController::class, 'show'])->name('marketing.campaign.show');
+Route::post('/campaign/{campaign:slug}', [BusinessMarketingCampaignController::class, 'submit'])->middleware('throttle:10,1')->name('marketing.campaign.submit');
+
+Route::middleware(['auth', 'business.approved'])->prefix('business')->group(function () {
+    Route::get('/campaigns', [BusinessMarketingCampaignController::class, 'index'])->name('business.campaigns.index');
+    Route::get('/campaigns/create', [BusinessMarketingCampaignController::class, 'create'])->name('business.campaigns.create');
+    Route::post('/campaigns', [BusinessMarketingCampaignController::class, 'store'])->name('business.campaigns.store');
+    Route::get('/campaigns/{campaign}/edit', [BusinessMarketingCampaignController::class, 'edit'])->name('business.campaigns.edit');
+    Route::put('/campaigns/{campaign}', [BusinessMarketingCampaignController::class, 'update'])->name('business.campaigns.update');
+    Route::patch('/campaigns/{campaign}/toggle', [BusinessMarketingCampaignController::class, 'toggle'])->name('business.campaigns.toggle');
+    Route::get('/campaigns/{campaign}/leads', [BusinessMarketingCampaignController::class, 'leads'])->name('business.campaigns.leads');
+});
 
 Route::middleware(['auth', 'role:super_admin'])->prefix('admin')->group(function () {
     Route::get('/marketer-recruitment', [MarketerRecruitmentController::class, 'admin'])->name('admin.marketer-recruitment');
