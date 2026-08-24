@@ -130,6 +130,12 @@ class BusinessMarketingCampaignController extends Controller
         $lead['what_sold'] = $responses['what_sold'] ?? null;
         $lead['sales_result'] = isset($responses['sales_result']) ? ['Very good' => 'very_good', 'Good' => 'good', 'Not good' => 'not_good'][$responses['sales_result']] ?? null : null;
         MarketingCampaignLead::create($lead);
-        return redirect()->away($campaign->redirect_url);
+
+        return redirect()->route('marketing.campaign.success', $campaign);
+    }
+
+    public function success(MarketingCampaign $campaign): View
+    {
+        return view('marketing-campaign.success', compact('campaign'));
     }
 }
