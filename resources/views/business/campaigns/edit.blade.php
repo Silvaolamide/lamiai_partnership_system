@@ -1,0 +1,12 @@
+<x-app-layout>
+<x-slot name="header"><div><h2 class="font-black text-xl text-gray-900">Edit Marketing Campaign</h2><p class="text-sm text-gray-500 mt-1">Update the campaign copy, status or final redirect.</p></div></x-slot>
+<div class="py-8"><div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8"><form method="POST" action="{{ route('business.campaigns.update', $campaign) }}" class="rounded-3xl border border-teal-100 bg-white p-6 shadow-sm sm:p-8 space-y-6">@csrf @method('PUT')
+<div><label class="text-sm font-black">Campaign name</label><input name="name" value="{{ old('name', $campaign->name) }}" required class="mt-2 w-full rounded-xl border-slate-200 focus:border-teal-600 focus:ring-teal-600"></div>
+<div><label class="text-sm font-black">Headline</label><input name="headline" value="{{ old('headline', $campaign->headline) }}" required class="mt-2 w-full rounded-xl border-slate-200 focus:border-teal-600 focus:ring-teal-600"></div>
+<div><label class="text-sm font-black">Description</label><textarea name="description" rows="3" class="mt-2 w-full rounded-xl border-slate-200 focus:border-teal-600 focus:ring-teal-600">{{ old('description', $campaign->description) }}</textarea></div>
+<div><label class="text-sm font-black">Final redirect URL</label><input type="url" name="redirect_url" value="{{ old('redirect_url', $campaign->redirect_url) }}" required class="mt-2 w-full rounded-xl border-slate-200 focus:border-teal-600 focus:ring-teal-600"></div>
+<div><label class="text-sm font-black">Status</label><select name="status" class="mt-2 w-full rounded-xl border-slate-200 focus:border-teal-600 focus:ring-teal-600"><option value="draft" @selected($campaign->status === 'draft')>Draft</option><option value="active" @selected($campaign->status === 'active')>Active</option><option value="paused" @selected($campaign->status === 'paused')>Paused</option></select></div>
+<div class="rounded-2xl bg-slate-50 p-5"><p class="text-xs font-black uppercase tracking-wider text-slate-400">Public campaign URL</p><a target="_blank" href="{{ url('/campaign/'.$campaign->slug) }}" class="mt-1 block break-all font-bold text-teal-700">{{ url('/campaign/'.$campaign->slug) }}</a></div>
+<div class="flex justify-end gap-3"><a href="{{ route('business.campaigns.index') }}" class="rounded-xl px-4 py-3 font-bold text-slate-500">Cancel</a><button class="rounded-xl bg-teal-700 px-6 py-3 font-black text-white">Save changes</button></div>
+</form></div></div>
+</x-app-layout>
