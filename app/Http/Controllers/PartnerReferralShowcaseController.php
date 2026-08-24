@@ -56,7 +56,7 @@ class PartnerReferralShowcaseController extends Controller
         $directRule = $rules->firstWhere('level', 1);
         $recruiterRule = $rules->firstWhere('level', 2);
 
-        return view('partner.referral-showcase', [
+        return view('partner.referral-showcase-with-images', [
             'partner' => $partner,
             'program' => $program,
             'subscribedPrograms' => $subscribedPrograms,
