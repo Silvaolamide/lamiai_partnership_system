@@ -7,17 +7,36 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        Schema::create('social_follow_verifications', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('participant_id')->constrained('social_follow_participants')->cascadeOnDelete();
-            $table->foreignId('social_account_id')->constrained('social_accounts')->cascadeOnDelete();
-            $table->string('status', 30)->default('claimed');
-            $table->string('verification_method', 50)->default('user_confirmation');
-            $table->timestamp('verified_at')->nullable();
-            $table->json('metadata')->nullable();
-            $table->timestamps();
-            $table->unique(['participant_id', 'social_account_id']);
-        });
+        if (!Schema::hasTable('social_follow_verifications')) {
+            Schema::create('social_follow_verifications', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('participant_id')->constrained('social_follow_participants')->cascadeOnDelete();
+                $table->foreignId('social_account_id')->constrained('social_accounts')->cascadeOnDelete();
+                $table->string('status', 30)->default('claimed');
+                $table->string('verification_method', 50)->default('user_confirmation');
+                $table->timestamp('verified_at')->nullable();
+                $table->json('metadata')->nullable();
+                $table->timestamps();
+            });
+        }
+
+        // Use a short explicit index name to stay within MySQL's 64-character identifier limit.
+        $indexes = collect(Schema::getIndexes('social_follow_verifications'))
+            ->pluck('name')
+            ->all();
+
+        if (!in_array('sfv_participant_account_unique', $indexes, true)) {
+            Schema::table('social_follow_verifications', function (Blueprint $table) {
+                $table->unique(
+                    ['participant_id', 'social_account_id'],
+                    'sfv_participant_account_unique'
+                );
+            });
+        }
     }
-    public function down(): void { Schema::dropIfExists('social_follow_verifications'); }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('social_follow_verifications');
+    }
 };
