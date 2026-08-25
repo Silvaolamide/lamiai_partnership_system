@@ -36,6 +36,7 @@ use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProductMarketplaceController;
 use App\Http\Controllers\ProductShowController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\SocialFollowController;
 use App\Models\PartnershipProgram;
 use App\Models\Product;
 use Illuminate\Support\Facades\Route;
@@ -69,6 +70,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::patch('/business/programs/{program}/partners/{partner}/reject', [BusinessPartnerApprovalController::class, 'reject'])->name('business.affiliates.reject');
         Route::get('/business/onboarding/{step}', [BusinessOnboardingController::class, 'show'])->name('business.onboarding');
         Route::post('/business/onboarding/{step}', [BusinessOnboardingController::class, 'store'])->name('business.onboarding.store');
+        Route::get('/business/social-follow/accounts', [SocialFollowController::class, 'accounts'])->name('business.social-follow.accounts');
+        Route::post('/business/social-follow/accounts', [SocialFollowController::class, 'saveAccounts'])->name('business.social-follow.accounts.save');
+        Route::get('/business/social-follow/campaigns', [SocialFollowController::class, 'campaigns'])->name('business.social-follow.campaigns.index');
+        Route::get('/business/social-follow/campaigns/create', [SocialFollowController::class, 'create'])->name('business.social-follow.campaigns.create');
+        Route::post('/business/social-follow/campaigns', [SocialFollowController::class, 'store'])->name('business.social-follow.campaigns.store');
+        Route::get('/business/social-follow/campaigns/{campaign}/edit', [SocialFollowController::class, 'edit'])->name('business.social-follow.campaigns.edit');
+        Route::put('/business/social-follow/campaigns/{campaign}', [SocialFollowController::class, 'update'])->name('business.social-follow.campaigns.update');
+        Route::patch('/business/social-follow/campaigns/{campaign}/toggle', [SocialFollowController::class, 'toggle'])->name('business.social-follow.campaigns.toggle');
     });
     Route::get('/network', [NetworkController::class, 'index'])->middleware('role:super_admin|program_manager|partner')->name('network.index');
     Route::get('/customer/dashboard', [CustomerDashboardController::class, 'index'])->name('customer.dashboard');
@@ -99,7 +108,7 @@ Route::middleware(['auth', 'role:super_admin'])->prefix('admin')->group(function
     Route::get('/partners', [AdminPartnerController::class, 'index'])->name('admin.partners.index'); Route::patch('/partners/{partner}/approve', [AdminPartnerController::class, 'approve'])->name('admin.partners.approve'); Route::patch('/partners/{partner}/approve-for-business', [AdminPartnerController::class, 'approveForBusiness'])->name('admin.partners.approve-for-business'); Route::patch('/partners/{partner}/reject', [AdminPartnerController::class, 'reject'])->name('admin.partners.reject');
     Route::get('/programs', [PartnershipProgramController::class, 'index'])->name('admin.programs.index'); Route::get('/programs/create', [PartnershipProgramController::class, 'create'])->name('admin.programs.create'); Route::post('/programs', [PartnershipProgramController::class, 'store'])->name('admin.programs.store'); Route::get('/programs/{program}/edit', [PartnershipProgramController::class, 'edit'])->name('admin.programs.edit'); Route::put('/programs/{program}', [PartnershipProgramController::class, 'update'])->name('admin.programs.update');
     Route::get('/products', [ProductController::class, 'index'])->name('admin.products.index'); Route::get('/products/create', [ProductController::class, 'create'])->name('admin.products.create'); Route::post('/products', [ProductController::class, 'store'])->name('admin.products.store'); Route::get('/products/{product}/edit', [ProductController::class, 'edit'])->name('admin.products.edit'); Route::put('/admin/products/{product}', [ProductController::class, 'update'])->name('admin.products.update');
-    Route::get('/orders', [OrderController::class, 'index'])->name('admin.orders.index'); Route::get('/orders/{order}', [OrderController::class, 'show'])->name('admin.orders.show'); Route::patch('/orders/{order}/mark-paid', [OrderController::class, 'markPaid'])->name('admin.orders.mark-paid'); Route::patch('/orders/{order}/cancel', [OrderController::class, 'cancel'])->name('admin.orders.cancel'); Route::patch('/orders/{order}/refund', [OrderController::class, 'refund'])->name('admin.orders.refund');
+    Route::get('/orders', [OrderController::class, 'index'])->name('admin.orders.index'); Route::get('/orders/{order}', [AdminDashboardController::class, 'show'])->name('admin.orders.show'); Route::patch('/orders/{order}/mark-paid', [OrderController::class, 'markPaid'])->name('admin.orders.mark-paid'); Route::patch('/orders/{order}/cancel', [OrderController::class, 'cancel'])->name('admin.orders.cancel'); Route::patch('/orders/{order}/refund', [OrderController::class, 'refund'])->name('admin.orders.refund');
     Route::get('/commissions', [CommissionController::class, 'index'])->name('admin.commissions.index'); Route::get('/commissions/{commission}', [CommissionController::class, 'show'])->name('admin.commissions.show'); Route::patch('/commissions/{commission}/approve', [CommissionController::class, 'approve'])->name('admin.commissions.approve'); Route::patch('/commissions/{commission}/mark-payable', [CommissionController::class, 'markPayable'])->name('admin.commissions.mark-payable'); Route::patch('/commissions/{commission}/reverse', [CommissionController::class, 'reverse'])->name('admin.commissions.reverse'); Route::post('/commissions/bulk-approve', [CommissionController::class, 'bulkApprove'])->name('admin.commissions.bulk-approve'); Route::post('/commissions/bulk-mark-payable', [CommissionController::class, 'bulkMarkPayable'])->name('admin.commissions.bulk-mark-payable');
     Route::get('/payouts', [AdminPayoutController::class, 'index'])->name('admin.payouts.index'); Route::get('/payouts/{payout}', [AdminPayoutController::class, 'show'])->name('admin.payouts.show'); Route::patch('/payouts/{payout}/approve', [AdminPayoutController::class, 'approve'])->name('admin.payouts.approve'); Route::patch('/payouts/{payout}/reject', [AdminPayoutController::class, 'reject'])->name('admin.payouts.reject'); Route::patch('/payouts/{payout}/process', [AdminPayoutController::class, 'process'])->name('admin.payouts.process'); Route::get('/business-payouts', [AdminBusinessPayoutController::class, 'index'])->name('admin.business-payouts.index'); Route::get('/business-payouts/{businessPayout}', [AdminBusinessPayoutController::class, 'show'])->name('admin.business-payouts.show'); Route::patch('/admin/business-payouts/{businessPayout}/approve', [AdminBusinessPayoutController::class, 'approve'])->name('admin.business-payouts.approve'); Route::patch('/admin/business-payouts/{businessPayout}/reject', [AdminBusinessPayoutController::class, 'reject'])->name('admin.business-payouts.reject'); Route::patch('/admin/business-payouts/{businessPayout}/process', [AdminBusinessPayoutController::class, 'process'])->name('admin.business-payouts.process');
 });
@@ -124,5 +133,8 @@ Route::post('/checkout/{orderId}/confirm-demo',[CheckoutController::class,'confi
 Route::get('/checkout/paystack/callback',[CheckoutController::class,'paystackCallback'])->name('checkout.paystack.callback');
 Route::post('/webhooks/paystack',[CheckoutController::class,'paystackWebhook'])->name('webhooks.paystack');
 Route::get('/order/{orderId}/post-payment',[CheckoutController::class,'postPayment'])->name('order.post-payment');
+Route::get('/follow/{slug}', [SocialFollowController::class, 'show'])->name('social-follow.show');
+Route::post('/follow/{slug}/claim/{socialAccount}', [SocialFollowController::class, 'claim'])->name('social-follow.claim');
+Route::post('/follow/{slug}/unlock', [SocialFollowController::class, 'unlock'])->name('social-follow.unlock');
 
 require __DIR__.'/auth.php';
