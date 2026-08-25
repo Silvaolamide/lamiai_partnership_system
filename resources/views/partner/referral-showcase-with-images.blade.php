@@ -10,7 +10,6 @@
                 return [
                     'product_id' => $product->id,
                     'program_name' => $program->name,
-                    'program_description' => $program->description,
                     'attribution_window_days' => $program->attribution_window_days,
                     'minimum_payout' => $program->minimum_payout,
                     'direct_rule' => $program->commissionRules->firstWhere('level', 1),
@@ -19,38 +18,41 @@
             });
         })
         ->groupBy('product_id');
-@endphp
 
-<script>
-window.addEventListener('DOMContentLoaded', function () {
-    const products = @json($products->map(function ($product) use ($productPrograms) {
+    $productCardData = $products->map(function ($product) use ($productPrograms) {
         $offers = $productPrograms->get($product->id, collect())->map(function ($offer) {
-            $direct = $offer['direct_rule'];
-            $recruiter = $offer['recruiter_rule'];
-
             $formatRule = function ($rule) {
-                if (!$rule) return null;
-                return $rule['commission_type'] === 'percentage'
-                    ? rtrim(rtrim(number_format((float) $rule['value'], 2), '0'), '.') . '%'
-                    : '₦' . number_format((float) $rule['value'], 2);
+                if (!$rule) {
+                    return null;
+                }
+
+                return $rule->commission_type === 'percentage'
+                    ? rtrim(rtrim(number_format((float) $rule->value, 2), '0'), '.') . '%'
+                    : '₦' . number_format((float) $rule->value, 2);
             };
 
             return [
                 'program_name' => $offer['program_name'],
-                'direct_commission' => $formatRule($direct),
-                'recruiter_commission' => $formatRule($recruiter),
+                'direct_commission' => $formatRule($offer['direct_rule']),
+                'recruiter_commission' => $formatRule($offer['recruiter_rule']),
                 'attribution_window_days' => $offer['attribution_window_days'],
                 'minimum_payout' => number_format((float) $offer['minimum_payout'], 2),
             ];
-        })->values();
+        })->values()->all();
 
         return [
             'name' => $product->name,
-            'image' => $product->featured_image ? Storage::url($product->featured_image) : null,
+            'image' => $product->featured_image
+                ? \Illuminate\Support\Facades\Storage::url($product->featured_image)
+                : null,
             'offers' => $offers,
         ];
-    })->values());
+    })->values()->all();
+@endphp
 
+<script>
+window.addEventListener('DOMContentLoaded', function () {
+    const products = @json($productCardData);
     const cards = document.querySelectorAll('#products .grid > article');
 
     cards.forEach(function (card, index) {
@@ -115,7 +117,7 @@ window.addEventListener('DOMContentLoaded', function () {
 
             const meta = document.createElement('p');
             meta.className = 'mt-3 text-[11px] font-semibold text-slate-500';
-            meta.textContent = offer.attribution_window_days + ' day attribution · Minimum payout ₦' + offer.minimum_payout;
+            meta.textContent = (offer.attribution_window_days ?? 0) + ' day attribution · Minimum payout ₦' + offer.minimum_payout;
             panel.appendChild(meta);
 
             details.appendChild(panel);
