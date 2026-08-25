@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::create('social_follow_campaigns', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('business_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->string('name');
             $table->string('slug');
             $table->string('headline')->nullable();
@@ -22,12 +22,9 @@ return new class extends Migration
             $table->string('cover_image')->nullable();
             $table->boolean('is_active')->default(true);
             $table->timestamps();
-            $table->unique(['business_id', 'slug']);
+            $table->unique(['user_id', 'slug']);
         });
     }
 
-    public function down(): void
-    {
-        Schema::dropIfExists('social_follow_campaigns');
-    }
+    public function down(): void { Schema::dropIfExists('social_follow_campaigns'); }
 };
