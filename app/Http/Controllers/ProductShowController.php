@@ -79,7 +79,9 @@ class ProductShowController extends Controller
         }
 
         $landingPages = config('landing_pages', []);
-        $selectedLandingPage = data_get($product->metadata, 'landing_page', 'classic');
+        $selectedLandingPage = $slug === 'forever-ivision-amej'
+            ? 'forever-ivision-amej'
+            : data_get($product->metadata, 'landing_page', 'classic');
 
         if (! isset($landingPages[$selectedLandingPage])) {
             $selectedLandingPage = 'classic';
