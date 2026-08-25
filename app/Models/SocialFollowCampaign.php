@@ -9,30 +9,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class SocialFollowCampaign extends Model
 {
-    protected $fillable = [
-        'business_id', 'name', 'slug', 'headline', 'description', 'minimum_score',
-        'resource_type', 'resource_title', 'resource_url', 'cover_image', 'is_active',
-    ];
-
+    protected $fillable = ['user_id', 'name', 'slug', 'headline', 'description', 'minimum_score', 'resource_type', 'resource_title', 'resource_url', 'cover_image', 'is_active'];
     protected $casts = ['is_active' => 'boolean'];
-
-    public function business(): BelongsTo
-    {
-        return $this->belongsTo(Business::class);
-    }
-
-    public function socialAccounts(): BelongsToMany
-    {
-        return $this->belongsToMany(
-            SocialAccount::class,
-            'social_follow_campaign_accounts',
-            'campaign_id',
-            'social_account_id'
-        )->withPivot(['points', 'sort_order'])->withTimestamps();
-    }
-
-    public function participants(): HasMany
-    {
-        return $this->hasMany(SocialFollowParticipant::class, 'campaign_id');
-    }
+    public function user(): BelongsTo { return $this->belongsTo(User::class); }
+    public function socialAccounts(): BelongsToMany { return $this->belongsToMany(SocialAccount::class, 'social_follow_campaign_accounts', 'campaign_id', 'social_account_id')->withPivot(['points', 'sort_order'])->withTimestamps(); }
+    public function participants(): HasMany { return $this->hasMany(SocialFollowParticipant::class, 'campaign_id'); }
 }
