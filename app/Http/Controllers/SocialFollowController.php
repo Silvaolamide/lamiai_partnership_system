@@ -1,0 +1,126 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\SocialAccount;
+use App\Models\SocialFollowCampaign;
+use App\Models\SocialFollowParticipant;
+use App\Models\SocialFollowVerification;
+use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
+
+class SocialFollowController extends Controller
+{
+    private const PLATFORMS = ['youtube','tiktok','instagram','facebook'];
+
+    private function owner(Request $request): int { return (int) $request->user()->id; }
+    private function campaign(Request $request, SocialFollowCampaign $campaign): SocialFollowCampaign { abort_unless((int)$campaign->user_id === $this->owner($request), 403); return $campaign; }
+
+    public function accounts(Request $request)
+    {
+        $accounts = SocialAccount::where('user_id',$this->owner($request))->orderBy('platform')->get()->keyBy('platform');
+        return view('business.social-follow.accounts', ['accounts'=>$accounts, 'platforms'=>self::PLATFORMS]);
+    }
+
+    public function saveAccounts(Request $request)
+    {
+        $data = $request->validate([
+            'accounts' => ['required','array'],
+            'accounts.*.handle' => ['nullable','string','max:255'],
+            'accounts.*.profile_url' => ['nullable','url:http,https','max:500'],
+            'accounts.*.enabled' => ['nullable','boolean'],
+        ]);
+        foreach (self::PLATFORMS as $platform) {
+            $row = $data['accounts'][$platform] ?? [];
+            $url = trim((string)($row['profile_url'] ?? ''));
+            if ($url === '') { SocialAccount::where('user_id',$this->owner($request))->where('platform',$platform)->delete(); continue; }
+            SocialAccount::updateOrCreate(['user_id'=>$this->owner($request),'platform'=>$platform], ['handle'=>trim((string)($row['handle'] ?? '')) ?: null,'profile_url'=>$url,'is_enabled'=>(bool)($row['enabled'] ?? false)]);
+        }
+        return back()->with('success','Social accounts saved successfully.');
+    }
+
+    public function campaigns(Request $request)
+    {
+        $campaigns = SocialFollowCampaign::where('user_id',$this->owner($request))->withCount('participants')->latest()->paginate(12);
+        return view('business.social-follow.campaigns.index', compact('campaigns'));
+    }
+
+    public function create(Request $request)
+    {
+        $accounts = SocialAccount::where('user_id',$this->owner($request))->where('is_enabled',true)->orderBy('platform')->get();
+        return view('business.social-follow.campaigns.create', compact('accounts'));
+    }
+
+    public function store(Request $request)
+    {
+        $data = $request->validate([
+            'name'=>['required','string','max:255'], 'headline'=>['required','string','max:255'], 'description'=>['nullable','string'],
+            'minimum_score'=>['required','integer','min:1'], 'resource_title'=>['required','string','max:255'], 'resource_url'=>['required','url:http,https','max:1000'],
+            'resource_button_text'=>['required','string','max:100'], 'social_accounts'=>['required','array','min:1'], 'social_accounts.*'=>['integer'],
+        ]);
+        $ownedIds = SocialAccount::where('user_id',$this->owner($request))->where('is_enabled',true)->pluck('id');
+        $selected = collect($data['social_accounts'])->map(fn($id)=>(int)$id)->unique()->intersect($ownedIds)->values();
+        abort_if($selected->isEmpty(),422,'Select at least one enabled social account.');
+        $minimum = min((int)$data['minimum_score'], $selected->count());
+        $base = Str::slug($data['name']); $slug=$base ?: 'social-follow'; $i=1;
+        while(SocialFollowCampaign::where('user_id',$this->owner($request))->where('slug',$slug)->exists()) $slug=$base.'-'.(++$i);
+        $campaign = SocialFollowCampaign::create(['user_id'=>$this->owner($request),'name'=>$data['name'],'slug'=>$slug,'headline'=>$data['headline'],'description'=>$data['description']??null,'minimum_score'=>$minimum,'resource_title'=>$data['resource_title'],'resource_url'=>$data['resource_url'],'resource_button_text'=>$data['resource_button_text'],'is_active'=>true]);
+        $campaign->socialAccounts()->sync($selected->values()->mapWithKeys(fn($id,$index)=>[$id=>['points'=>1,'sort_order'=>$index]])->all());
+        return redirect()->route('business.social-follow.campaigns.index')->with('success','Social follow campaign created.');
+    }
+
+    public function edit(Request $request, SocialFollowCampaign $campaign)
+    {
+        $campaign=$this->campaign($request,$campaign)->load('socialAccounts');
+        $accounts=SocialAccount::where('user_id',$this->owner($request))->where('is_enabled',true)->orderBy('platform')->get();
+        return view('business.social-follow.campaigns.edit', compact('campaign','accounts'));
+    }
+
+    public function update(Request $request, SocialFollowCampaign $campaign)
+    {
+        $campaign=$this->campaign($request,$campaign);
+        $data=$request->validate(['name'=>['required','string','max:255'],'headline'=>['required','string','max:255'],'description'=>['nullable','string'],'minimum_score'=>['required','integer','min:1'],'resource_title'=>['required','string','max:255'],'resource_url'=>['required','url:http,https','max:1000'],'resource_button_text'=>['required','string','max:100'],'social_accounts'=>['required','array','min:1'],'social_accounts.*'=>['integer']]);
+        $ownedIds=SocialAccount::where('user_id',$this->owner($request))->where('is_enabled',true)->pluck('id');$selected=collect($data['social_accounts'])->map(fn($id)=>(int)$id)->unique()->intersect($ownedIds)->values();abort_if($selected->isEmpty(),422,'Select at least one enabled social account.');
+        $campaign->update([...collect($data)->except('social_accounts')->all(),'minimum_score'=>min((int)$data['minimum_score'],$selected->count())]);
+        $campaign->socialAccounts()->sync($selected->values()->mapWithKeys(fn($id,$index)=>[$id=>['points'=>1,'sort_order'=>$index]])->all());
+        return redirect()->route('business.social-follow.campaigns.index')->with('success','Social follow campaign updated.');
+    }
+
+    public function toggle(Request $request, SocialFollowCampaign $campaign)
+    {
+        $campaign=$this->campaign($request,$campaign);$campaign->update(['is_active'=>!$campaign->is_active]);return back()->with('success','Campaign status updated.');
+    }
+
+    public function show(Request $request, string $slug)
+    {
+        $campaign=SocialFollowCampaign::where('slug',$slug)->where('is_active',true)->with('socialAccounts')->firstOrFail();
+        $participant=$this->participant($request,$campaign);$verified=$participant->verifications()->where('status','claimed')->pluck('social_account_id')->all();$score=$this->score($campaign,$verified);$participant->update(['score'=>$score]);$unlocked=$score >= $campaign->minimum_score;
+        return view('social-follow.show',compact('campaign','participant','verified','score','unlocked'));
+    }
+
+    public function claim(Request $request, string $slug, SocialAccount $socialAccount)
+    {
+        $campaign=SocialFollowCampaign::where('slug',$slug)->where('is_active',true)->with('socialAccounts')->firstOrFail();abort_unless($campaign->socialAccounts->contains('id',$socialAccount->id),404);
+        $participant=$this->participant($request,$campaign);
+        SocialFollowVerification::updateOrCreate(['participant_id'=>$participant->id,'social_account_id'=>$socialAccount->id],['status'=>'claimed','verification_method'=>'user_confirmation','verified_at'=>now()]);
+        $verified=$participant->verifications()->where('status','claimed')->pluck('social_account_id')->all();$participant->update(['score'=>$this->score($campaign,$verified)]);
+        return redirect()->route('social-follow.show',$campaign->slug);
+    }
+
+    public function unlock(Request $request, string $slug)
+    {
+        $campaign=SocialFollowCampaign::where('slug',$slug)->where('is_active',true)->with('socialAccounts')->firstOrFail();$participant=$this->participant($request,$campaign);$verified=$participant->verifications()->where('status','claimed')->pluck('social_account_id')->all();$score=$this->score($campaign,$verified);abort_unless($score >= $campaign->minimum_score,403,'Complete the required social follows first.');return redirect()->away($campaign->resource_url);
+    }
+
+    private function participant(Request $request, SocialFollowCampaign $campaign): SocialFollowParticipant
+    {
+        $token=$request->session()->get('social_follow_token_'.$campaign->id);
+        if(!$token){$token=Str::random(64);$request->session()->put('social_follow_token_'.$campaign->id,$token);}
+        return SocialFollowParticipant::firstOrCreate(['session_token'=>$token,'campaign_id'=>$campaign->id]);
+    }
+    private function score(SocialFollowCampaign $campaign, array $verified): int
+    {
+        return (int)$campaign->socialAccounts->filter(fn($account)=>in_array($account->id,$verified,true))->sum(fn($account)=>(int)($account->pivot->points ?? 1));
+    }
+}
