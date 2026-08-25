@@ -13,8 +13,7 @@ use App\Http\Controllers\Admin\OrderController;
 use App\Http\Controllers\Admin\CommissionController;
 
 Route::get('/checkout/start', [CheckoutController::class, 'start'])->name('checkout.start');
-
-Route::middleware(['auth'])->group(function () {
+Route::middleware('auth')->group(function () {
     Route::get('/partner/dashboard', [PartnerDashboardController::class, 'index'])->name('partner.dashboard');
     Route::get('/business/social-follow', [SocialFollowController::class, 'index'])->name('business.social-follow.index');
     Route::get('/business/social-follow/create', [SocialFollowController::class, 'create'])->name('business.social-follow.create');
@@ -22,12 +21,10 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/business/social-follow/{campaign}/edit', [SocialFollowController::class, 'edit'])->name('business.social-follow.edit');
     Route::put('/business/social-follow/{campaign}', [SocialFollowController::class, 'update'])->name('business.social-follow.update');
 });
-
-Route::get('/follow/{businessSlug}/{campaignSlug}', [SocialFollowController::class, 'show'])->name('social-follow.show');
-Route::post('/follow/{businessSlug}/{campaignSlug}/start', [SocialFollowController::class, 'start'])->name('social-follow.start');
-Route::post('/follow/{businessSlug}/{campaignSlug}/verify/{account}', [SocialFollowController::class, 'verify'])->name('social-follow.verify');
-Route::get('/follow/{businessSlug}/{campaignSlug}/unlock', [SocialFollowController::class, 'unlock'])->name('social-follow.unlock');
-
+Route::get('/follow/{userSlug}/{campaignSlug}', [SocialFollowController::class, 'show'])->name('social-follow.show');
+Route::post('/follow/{userSlug}/{campaignSlug}/start', [SocialFollowController::class, 'start'])->name('social-follow.start');
+Route::post('/follow/{userSlug}/{campaignSlug}/verify/{account}', [SocialFollowController::class, 'verify'])->name('social-follow.verify');
+Route::get('/follow/{userSlug}/{campaignSlug}/unlock', [SocialFollowController::class, 'unlock'])->name('social-follow.unlock');
 Route::middleware(['auth', 'role:super_admin'])->prefix('admin')->group(function () {
     Route::get('/partners', [AdminPartnerController::class, 'index'])->name('admin.partners.index');
     Route::patch('/partners/{partner}/approve', [AdminPartnerController::class, 'approve'])->name('admin.partners.approve');
@@ -45,7 +42,6 @@ Route::middleware(['auth', 'role:super_admin'])->prefix('admin')->group(function
     Route::post('/commissions/bulk-approve', [CommissionController::class, 'bulkApprove'])->name('admin.commissions.bulk-approve');
     Route::post('/commissions/bulk-mark-payable', [CommissionController::class, 'bulkMarkPayable'])->name('admin.commissions.bulk-mark-payable');
 });
-
 Route::get('/partner/apply', [PartnerController::class, 'create'])->name('partner.apply');
 Route::post('/partner/apply', [PartnerController::class, 'store'])->name('partner.apply.store');
 Route::get('/admin/programs/{program}/edit', [PartnershipProgramController::class, 'edit'])->name('admin.programs.edit');
@@ -57,22 +53,11 @@ Route::get('/admin/products/{product}/edit', [ProductController::class, 'edit'])
 Route::put('/admin/products/{product}', [ProductController::class, 'update'])->name('admin.products.update');
 Route::get('/', fn () => view('welcome'));
 Route::get('/dashboard', fn () => view('dashboard'))->middleware(['auth', 'verified'])->name('dashboard');
-Route::middleware('auth')->group(function () {
-    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
-});
-Route::middleware(['auth', 'role:super_admin'])->group(function () {
-    Route::get('/admin', fn () => view('admin.dashboard'))->name('admin');
-});
+Route::middleware('auth')->group(function () { Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit'); Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update'); Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy'); });
+Route::middleware(['auth', 'role:super_admin'])->group(function () { Route::get('/admin', fn () => view('admin.dashboard'))->name('admin'); });
 Route::get('/admin/programs', [PartnershipProgramController::class, 'index'])->name('admin.programs.index');
 Route::get('/admin/programs/create', [PartnershipProgramController::class, 'create'])->name('admin.programs.create');
 Route::post('/admin/programs', [PartnershipProgramController::class, 'store'])->name('admin.programs.store');
 Route::get('/product/{slug}', [ProductShowController::class, 'show'])->name('product.show');
-Route::middleware('auth')->group(function () {
-    Route::post('/checkout', [CheckoutController::class, 'create'])->name('checkout.create');
-    Route::get('/checkout/{orderId}', [CheckoutController::class, 'show'])->name('checkout.show');
-    Route::post('/checkout/{orderId}/confirm', [CheckoutController::class, 'confirm'])->name('checkout.confirm');
-    Route::get('/order/{orderId}/success', [CheckoutController::class, 'success'])->name('order.success');
-});
+Route::middleware('auth')->group(function () { Route::post('/checkout', [CheckoutController::class, 'create'])->name('checkout.create'); Route::get('/checkout/{orderId}', [CheckoutController::class, 'show'])->name('checkout.show'); Route::post('/checkout/{orderId}/confirm', [CheckoutController::class, 'confirm'])->name('checkout.confirm'); Route::get('/order/{orderId}/success', [CheckoutController::class, 'success'])->name('order.success'); });
 require __DIR__.'/auth.php';
