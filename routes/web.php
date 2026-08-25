@@ -36,6 +36,7 @@ use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProductMarketplaceController;
 use App\Http\Controllers\ProductShowController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\SocialFollowController;
 use App\Models\PartnershipProgram;
 use App\Models\Product;
 use Illuminate\Support\Facades\Route;
@@ -69,6 +70,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::patch('/business/programs/{program}/partners/{partner}/reject', [BusinessPartnerApprovalController::class, 'reject'])->name('business.affiliates.reject');
         Route::get('/business/onboarding/{step}', [BusinessOnboardingController::class, 'show'])->name('business.onboarding');
         Route::post('/business/onboarding/{step}', [BusinessOnboardingController::class, 'store'])->name('business.onboarding.store');
+        Route::get('/business/social-follow/accounts', [SocialFollowController::class, 'accounts'])->name('business.social-follow.accounts');
+        Route::post('/business/social-follow/accounts', [SocialFollowController::class, 'saveAccounts'])->name('business.social-follow.accounts.save');
+        Route::get('/business/social-follow/campaigns', [SocialFollowController::class, 'campaigns'])->name('business.social-follow.campaigns.index');
+        Route::get('/business/social-follow/campaigns/create', [SocialFollowController::class, 'create'])->name('business.social-follow.campaigns.create');
+        Route::post('/business/social-follow/campaigns', [SocialFollowController::class, 'store'])->name('business.social-follow.campaigns.store');
+        Route::get('/business/social-follow/campaigns/{campaign}/edit', [SocialFollowController::class, 'edit'])->name('business.social-follow.campaigns.edit');
+        Route::put('/business/social-follow/campaigns/{campaign}', [SocialFollowController::class, 'update'])->name('business.social-follow.campaigns.update');
+        Route::patch('/business/social-follow/campaigns/{campaign}/toggle', [SocialFollowController::class, 'toggle'])->name('business.social-follow.campaigns.toggle');
     });
     Route::get('/network', [NetworkController::class, 'index'])->middleware('role:super_admin|program_manager|partner')->name('network.index');
     Route::get('/customer/dashboard', [CustomerDashboardController::class, 'index'])->name('customer.dashboard');
@@ -124,5 +133,8 @@ Route::post('/checkout/{orderId}/confirm-demo',[CheckoutController::class,'confi
 Route::get('/checkout/paystack/callback',[CheckoutController::class,'paystackCallback'])->name('checkout.paystack.callback');
 Route::post('/webhooks/paystack',[CheckoutController::class,'paystackWebhook'])->name('webhooks.paystack');
 Route::get('/order/{orderId}/post-payment',[CheckoutController::class,'postPayment'])->name('order.post-payment');
+Route::get('/follow/{slug}', [SocialFollowController::class, 'show'])->name('social-follow.show');
+Route::post('/follow/{slug}/claim/{socialAccount}', [SocialFollowController::class, 'claim'])->name('social-follow.claim');
+Route::post('/follow/{slug}/unlock', [SocialFollowController::class, 'unlock'])->name('social-follow.unlock');
 
 require __DIR__.'/auth.php';
