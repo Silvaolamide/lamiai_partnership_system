@@ -24,6 +24,16 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasMany(Order::class, 'customer_id');
     }
 
+    public function socialAccounts()
+    {
+        return $this->hasMany(SocialAccount::class);
+    }
+
+    public function socialFollowCampaigns()
+    {
+        return $this->hasMany(SocialFollowCampaign::class, 'user_id');
+    }
+
     public function isBusinessRegistration(): bool
     {
         return $this->registration_type === 'business';
