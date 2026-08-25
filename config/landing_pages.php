@@ -11,4 +11,9 @@ return [
         'description' => 'Lami AI cinematic masterclass landing page using the supplied original creative assets.',
         'view' => 'products.landings.ai-film-masterclass',
     ],
+    'forever-ivision-amej' => [
+        'name' => 'Forever iVision_Amej',
+        'description' => 'Dedicated product landing page for Forever iVision_Amej.',
+        'view' => 'products.landings.forever-ivision-amej',
+    ],
 ];
