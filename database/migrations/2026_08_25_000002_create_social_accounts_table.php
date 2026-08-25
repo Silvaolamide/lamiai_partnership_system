@@ -10,18 +10,15 @@ return new class extends Migration
     {
         Schema::create('social_accounts', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('business_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->string('platform');
             $table->string('handle')->nullable();
             $table->string('profile_url');
             $table->boolean('is_enabled')->default(true);
             $table->timestamps();
-            $table->unique(['business_id', 'platform']);
+            $table->unique(['user_id', 'platform']);
         });
     }
 
-    public function down(): void
-    {
-        Schema::dropIfExists('social_accounts');
-    }
+    public function down(): void { Schema::dropIfExists('social_accounts'); }
 };
