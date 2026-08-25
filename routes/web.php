@@ -48,7 +48,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/partner/programs/{program}', [PartnerMarketplaceController::class, 'show'])->name('partner.marketplace.show');
     Route::post('/partner/programs/{program}/join', [PartnerMarketplaceController::class, 'join'])->name('partner.marketplace.join');
     Route::get('/partner/payouts', [PayoutController::class, 'index'])->middleware('partner.approved')->name('partner.payouts.index');
-    Route::post('/partner/payouts', [PayoutController::class, 'store'])->name('partner.payouts.store');
+    Route::post('/partner/payouts', [PayoutController::class, 'store'])->middleware('partner.approved')->name('partner.payouts.store');
     Route::get('/business/pending', [BusinessOnboardingController::class, 'pending'])->name('business.pending');
     Route::middleware('business.approved')->group(function () {
         Route::get('/business/dashboard', [BusinessDashboardController::class, 'index'])->name('business.dashboard');
