@@ -11,7 +11,7 @@ return new class extends Migration {
             $table->id();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->string('name');
-            $table->string('slug');
+            $table->string('slug')->unique();
             $table->string('headline')->nullable();
             $table->text('description')->nullable();
             $table->unsignedInteger('minimum_score')->default(1);
@@ -21,7 +21,6 @@ return new class extends Migration {
             $table->string('cover_image')->nullable();
             $table->boolean('is_active')->default(true);
             $table->timestamps();
-            $table->unique(['user_id', 'slug']);
         });
     }
     public function down(): void { Schema::dropIfExists('social_follow_campaigns'); }
