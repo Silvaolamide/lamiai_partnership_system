@@ -23,16 +23,6 @@
 <div class="mt-4 h-3 overflow-hidden rounded-full bg-slate-700"><div class="h-full rounded-full bg-teal-400 transition-all" style="width:{{ min(100,($score / max(1,$campaign->socialAccounts->sum(fn($a)=>(int)($a->pivot->points ?? 1))))*100) }}%"></div></div>
 </div>
 
-<div class="mt-6 rounded-3xl border border-teal-100 bg-teal-50 p-4">
-<div class="flex gap-3">
-<div class="mt-0.5 shrink-0 text-lg">👉</div>
-<div>
-<p class="font-black text-teal-950">Follow, then come right back</p>
-<p class="mt-1 text-xs leading-5 text-teal-800">Tap a Follow button below. We'll take you to the official account. Follow it, then use your phone's Back button or return to this page and tap <b>I've followed</b>.</p>
-</div>
-</div>
-</div>
-
 <div class="mt-6 space-y-3">
 @php($icons=['youtube'=>'▶','tiktok'=>'♪','instagram'=>'◎','facebook'=>'f'])
 @foreach($campaign->socialAccounts as $account)
@@ -44,15 +34,13 @@
 <div class="min-w-0 flex-1"><p class="font-black capitalize">{{$account->platform}}</p><p class="truncate text-xs text-slate-500">{{$account->handle ?: 'Follow our official account'}}</p></div>
 @if($done)<span class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-black text-emerald-700">✓ Done</span>@endif
 </div>
-
-<div class="mt-4 space-y-2">
-<a href="{{$account->followUrl()}}" data-follow-key="{{$followKey}}" class="follow-platform block w-full rounded-xl {{ $done?'border border-emerald-200 bg-white text-emerald-700':'bg-slate-900 text-white' }} px-4 py-3 text-center text-sm font-black transition active:scale-[.99]">{{ $account->platform==='youtube'?'Subscribe on YouTube':'Follow on '.ucfirst($account->platform) }} <span class="text-xs opacity-70">→</span></a>
+<div class="mt-4 flex flex-wrap gap-2">
+<a href="{{$account->followUrl()}}" data-follow-key="{{$followKey}}" data-platform="{{$account->platform}}" class="follow-platform flex-1 rounded-xl {{ $done?'border border-emerald-200 bg-white text-emerald-700':'bg-slate-900 text-white' }} px-4 py-3 text-center text-sm font-black">{{ $account->platform==='youtube'?'Subscribe on YouTube':'Follow on '.ucfirst($account->platform) }} →</a>
 @unless($done)
-<form method="POST" action="{{route('social-follow.claim',[$campaign->slug,$account->id])}}">
+<form class="flex-1" method="POST" action="{{route('social-follow.claim',[$campaign->slug,$account->id])}}">
 @csrf
-<button type="submit" data-claim-key="{{$followKey}}" disabled autocomplete="off" class="claim-follow w-full cursor-not-allowed rounded-xl border border-slate-200 bg-slate-100 px-4 py-3 text-sm font-black text-slate-400 opacity-70 transition" aria-disabled="true">I've followed — check ✓</button>
+<button type="submit" data-claim-key="{{$followKey}}" disabled autocomplete="off" class="claim-follow w-full cursor-not-allowed pointer-events-none rounded-xl border border-slate-200 bg-slate-100 px-4 py-3 text-sm font-black text-slate-400 opacity-70 transition" aria-disabled="true">I've followed — check ✓</button>
 </form>
-<p data-status-key="{{$followKey}}" class="follow-status hidden text-center text-[11px] font-bold text-slate-400">Welcome back. Tap “I've followed” when you're ready.</p>
 @endunless
 </div>
 </div>
@@ -64,43 +52,60 @@
 @else
 <div class="mt-7 rounded-3xl bg-amber-50 p-5 text-center"><p class="font-black text-amber-950">Almost there!</p><p class="mt-1 text-sm text-amber-800">Complete enough follows to reach {{ $campaign->minimum_score }} points and unlock your resource.</p></div>
 @endif
-
-<p class="mt-8 text-center text-[11px] font-bold uppercase tracking-widest text-slate-400">Your progress is saved on this device while you complete the follows.</p>
+<p class="mt-8 text-center text-[11px] font-bold uppercase tracking-widest text-slate-400">Follow the official accounts above, then return here to confirm.</p>
 </div>
 </main>
 
 <script>
 (function () {
-    var storagePrefix = 'social-follow-started-{{ $campaign->id }}-';
-
     function enableClaim(key) {
         var claim = document.querySelector('[data-claim-key="' + key + '"]');
-        var status = document.querySelector('[data-status-key="' + key + '"]');
         if (!claim) return;
-
         claim.disabled = false;
         claim.removeAttribute('aria-disabled');
-        claim.classList.remove('cursor-not-allowed','border-slate-200','bg-slate-100','text-slate-400','opacity-70');
-        claim.classList.add('cursor-pointer','border-teal-200','bg-teal-50','text-teal-700');
-        if (status) status.classList.remove('hidden');
+        claim.classList.remove('cursor-not-allowed','pointer-events-none','border-slate-200','bg-slate-100','text-slate-400','opacity-70');
+        claim.classList.add('cursor-pointer','pointer-events-auto','border-teal-200','bg-teal-50','text-teal-700');
+    }
+
+    function androidIntent(url, platform) {
+        var parsed;
+        try { parsed = new URL(url); } catch (e) { return null; }
+
+        var packages = {
+            instagram: 'com.instagram.android',
+            facebook: 'com.facebook.katana',
+            tiktok: 'com.zhiliaoapp.musically',
+            youtube: 'com.google.android.youtube'
+        };
+        var pkg = packages[platform];
+        if (!pkg || parsed.protocol !== 'https:') return null;
+
+        var fallback = encodeURIComponent(url);
+        return 'intent://' + parsed.host + parsed.pathname + parsed.search +
+            '#Intent;scheme=https;package=' + pkg +
+            ';S.browser_fallback_url=' + fallback + ';end';
     }
 
     document.querySelectorAll('.follow-platform').forEach(function (link) {
         var key = link.dataset.followKey;
+        var platform = (link.dataset.platform || '').toLowerCase();
         if (!key) return;
 
-        // If the visitor already started this follow before leaving the page,
-        // keep the confirmation button available when they return.
-        if (localStorage.getItem(storagePrefix + key) === '1') {
+        link.addEventListener('click', function (event) {
             enableClaim(key);
-        }
 
-        link.addEventListener('click', function () {
-            localStorage.setItem(storagePrefix + key, '1');
-            enableClaim(key);
-            // Deliberately do NOT use target="_blank". The visitor stays in
-            // the same browser flow, while mobile OSes can still hand the
-            // platform URL off to its native app when supported.
+            // Android: explicitly request the native app and give Chrome an
+            // official web fallback if that app is not installed.
+            if (/Android/i.test(navigator.userAgent)) {
+                var intent = androidIntent(link.href, platform);
+                if (intent) {
+                    event.preventDefault();
+                    window.location.href = intent;
+                }
+            }
+            // iOS and desktop intentionally keep the normal HTTPS URL.
+            // iOS Universal Links can hand it to the installed native app;
+            // without the app, the same URL remains the web fallback.
         });
     });
 })();
