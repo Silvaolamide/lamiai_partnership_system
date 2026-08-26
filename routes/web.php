@@ -108,7 +108,11 @@ Route::middleware(['auth', 'role:super_admin'])->prefix('admin')->group(function
     Route::get('/partners', [AdminPartnerController::class, 'index'])->name('admin.partners.index'); Route::patch('/partners/{partner}/approve', [AdminPartnerController::class, 'approve'])->name('admin.partners.approve'); Route::patch('/partners/{partner}/approve-for-business', [AdminPartnerController::class, 'approveForBusiness'])->name('admin.partners.approve-for-business'); Route::patch('/partners/{partner}/reject', [AdminPartnerController::class, 'reject'])->name('admin.partners.reject');
     Route::get('/programs', [PartnershipProgramController::class, 'index'])->name('admin.programs.index'); Route::get('/programs/create', [PartnershipProgramController::class, 'create'])->name('admin.programs.create'); Route::post('/programs', [PartnershipProgramController::class, 'store'])->name('admin.programs.store'); Route::get('/programs/{program}/edit', [PartnershipProgramController::class, 'edit'])->name('admin.programs.edit'); Route::put('/programs/{program}', [PartnershipProgramController::class, 'update'])->name('admin.programs.update');
     Route::get('/products', [ProductController::class, 'index'])->name('admin.products.index'); Route::get('/products/create', [ProductController::class, 'create'])->name('admin.products.create'); Route::post('/products', [ProductController::class, 'store'])->name('admin.products.store'); Route::get('/products/{product}/edit', [ProductController::class, 'edit'])->name('admin.products.edit'); Route::put('/admin/products/{product}', [ProductController::class, 'update'])->name('admin.products.update');
-    Route::get('/orders', [OrderController::class, 'index'])->name('admin.orders.index'); Route::get('/orders/{order}', [AdminDashboardController::class, 'index'])->name('admin.orders.placeholder');
+    Route::get('/orders', [OrderController::class, 'index'])->name('admin.orders.index');
+    Route::get('/orders/{order}', [OrderController::class, 'show'])->name('admin.orders.show');
+    Route::patch('/orders/{order}/mark-paid', [OrderController::class, 'markPaid'])->name('admin.orders.mark-paid');
+    Route::patch('/orders/{order}/cancel', [OrderController::class, 'cancel'])->name('admin.orders.cancel');
+    Route::patch('/orders/{order}/refund', [OrderController::class, 'refund'])->name('admin.orders.refund');
 });
 Route::get('/partner/apply', [PartnerController::class, 'create'])->name('partner.apply'); Route::post('/partner/apply', [PartnerController::class, 'store'])->name('partner.apply.store');
 Route::get('/partner/store/{partnerCode}', [PartnerReferralShowcaseController::class, 'show'])->name('partner.storefront');
@@ -131,9 +135,5 @@ Route::post('/checkout/{order}/dispute',[PaymentDisputeController::class,'store'
 Route::post('/checkout/{orderId}/confirm-demo',[CheckoutController::class,'confirm'])->name('checkout.confirm');
 Route::get('/checkout/paystack/callback',[CheckoutController::class,'paystackCallback'])->name('checkout.paystack.callback');
 Route::post('/webhooks/paystack',[CheckoutController::class,'paystackWebhook'])->name('webhooks.paystack');
-Route::get('/order/{orderId}/post-payment',[CheckoutController::class,'postPayment'])->name('order.post-payment');
-Route::get('/follow/{slug}', [SocialFollowController::class, 'show'])->name('social-follow.show');
-Route::post('/follow/{slug}/claim/{socialAccount}', [SocialFollowController::class, 'claim'])->name('social-follow.claim');
-Route::post('/follow/{slug}/unlock', [SocialFollowController::class, 'unlock'])->name('social-follow.unlock');
 
 require __DIR__.'/auth.php';
