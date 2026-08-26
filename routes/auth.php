@@ -47,6 +47,7 @@ Route::get('/marketer-recruitment/thank-you', [MarketerRecruitmentController::cl
 Route::get('/campaign/{campaign:slug}', [BusinessMarketingCampaignController::class, 'show'])->name('marketing.campaign.show');
 Route::post('/campaign/{campaign:slug}', [BusinessMarketingCampaignController::class, 'submit'])->middleware('throttle:10,1')->name('marketing.campaign.submit');
 Route::get('/campaign/{campaign:slug}/success', [BusinessMarketingCampaignController::class, 'success'])->name('marketing.campaign.success');
+Route::get('/resource-gate', fn () => view('resource-gate.landing'))->name('resource-gate.landing');
 
 Route::middleware(['auth', 'business.approved'])->prefix('business')->group(function () {
     Route::get('/campaigns', [BusinessMarketingCampaignController::class, 'index'])->name('business.campaigns.index');
