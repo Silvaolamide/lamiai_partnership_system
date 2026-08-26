@@ -22,6 +22,7 @@ return Application::configure(basePath: dirname(__DIR__))
             Route::middleware('web')->group(function (): void {
                 require __DIR__.'/../routes/auth.php';
                 require __DIR__.'/../routes/admin.php';
+                require __DIR__.'/../routes/social_follow.php';
             });
         },
     )
