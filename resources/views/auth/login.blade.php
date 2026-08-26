@@ -7,7 +7,7 @@
 
     <x-auth-session-status class="mb-5 rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-700" :status="session('status')" />
 
-    @if ($errors->any())
+    @if (isset($errors) && $errors->any())
         <div class="mb-5 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
             <p class="font-semibold">We couldn't sign you in.</p>
             <p class="mt-1 text-red-600">Please check your details and try again.</p>
@@ -19,7 +19,7 @@
         <div>
             <x-input-label for="email" value="Email address" class="mb-2 font-semibold text-gray-700" />
             <x-text-input id="email" class="brand-input block w-full rounded-xl border-gray-200 bg-gray-50 px-4 py-3.5 text-sm" type="email" name="email" :value="old('email')" required autofocus autocomplete="username" placeholder="you@company.com" />
-            <x-input-error :messages="$errors->get('email')" class="mt-2" />
+            <x-input-error :messages="isset($errors) ? $errors->get('email') : []" class="mt-2" />
         </div>
 
         <div>
@@ -30,7 +30,7 @@
                 @endif
             </div>
             <x-text-input id="password" class="brand-input block w-full rounded-xl border-gray-200 bg-gray-50 px-4 py-3.5 text-sm" type="password" name="password" required autocomplete="current-password" placeholder="Enter your password" />
-            <x-input-error :messages="$errors->get('password')" class="mt-2" />
+            <x-input-error :messages="isset($errors) ? $errors->get('password') : []" class="mt-2" />
         </div>
 
         <label for="remember_me" class="flex cursor-pointer items-center gap-3 text-sm text-gray-500">
