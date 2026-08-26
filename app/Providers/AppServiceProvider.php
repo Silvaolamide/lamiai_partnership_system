@@ -23,5 +23,10 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Gate::policy(Order::class, OrderPolicy::class);
+
+        // Some admin money-management routes are maintained separately from
+        // the large web route file so they cannot be accidentally dropped
+        // when the main route definitions are edited.
+        require base_path('routes/admin.php');
     }
 }
