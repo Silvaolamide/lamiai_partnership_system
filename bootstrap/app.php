@@ -16,6 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
         then: function (): void {
             require __DIR__.'/../routes/auth.php';
+            require __DIR__.'/../routes/admin.php';
         },
     )
     ->withCommands([
