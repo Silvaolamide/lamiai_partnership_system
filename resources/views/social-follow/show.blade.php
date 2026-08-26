@@ -23,6 +23,17 @@
 <div class="mt-4 h-3 overflow-hidden rounded-full bg-slate-700"><div class="h-full rounded-full bg-teal-400 transition-all" style="width:{{ min(100,($score / max(1,$campaign->socialAccounts->sum(fn($a)=>(int)($a->pivot->points ?? 1))))*100) }}%"></div></div>
 </div>
 
+<div class="mt-6 rounded-3xl border-2 border-teal-200 bg-teal-50 p-5 shadow-sm">
+<div class="flex gap-3">
+<div class="shrink-0 text-xl">⚠️</div>
+<div>
+<p class="text-base font-black uppercase tracking-tight text-teal-950">IMPORTANT — COME BACK HERE</p>
+<p class="mt-2 text-sm font-bold leading-6 text-teal-900">Tap <b>Follow</b> to open the social app. If the app is not installed, the account will open in a new browser tab.</p>
+<p class="mt-2 text-sm font-black leading-6 text-teal-950">After you follow the account, <u>COME BACK TO THIS PAGE</u> and tap <b>“I've followed — check ✓”</b> to continue.</p>
+</div>
+</div>
+</div>
+
 <div class="mt-6 space-y-3">
 @php($icons=['youtube'=>'▶','tiktok'=>'♪','instagram'=>'◎','facebook'=>'f'])
 @foreach($campaign->socialAccounts as $account)
@@ -35,7 +46,7 @@
 @if($done)<span class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-black text-emerald-700">✓ Done</span>@endif
 </div>
 <div class="mt-4 flex flex-wrap gap-2">
-<a href="{{$account->followUrl()}}" data-follow-key="{{$followKey}}" data-platform="{{$account->platform}}" class="follow-platform flex-1 rounded-xl {{ $done?'border border-emerald-200 bg-white text-emerald-700':'bg-slate-900 text-white' }} px-4 py-3 text-center text-sm font-black">{{ $account->platform==='youtube'?'Subscribe on YouTube':'Follow on '.ucfirst($account->platform) }} →</a>
+<a href="{{$account->followUrl()}}" target="_blank" rel="noopener" data-follow-key="{{$followKey}}" data-platform="{{$account->platform}}" class="follow-platform flex-1 rounded-xl {{ $done?'border border-emerald-200 bg-white text-emerald-700':'bg-slate-900 text-white' }} px-4 py-3 text-center text-sm font-black">{{ $account->platform==='youtube'?'Subscribe on YouTube':'Follow on '.ucfirst($account->platform) }} →</a>
 @unless($done)
 <form class="flex-1" method="POST" action="{{route('social-follow.claim',[$campaign->slug,$account->id])}}">
 @csrf
@@ -52,7 +63,7 @@
 @else
 <div class="mt-7 rounded-3xl bg-amber-50 p-5 text-center"><p class="font-black text-amber-950">Almost there!</p><p class="mt-1 text-sm text-amber-800">Complete enough follows to reach {{ $campaign->minimum_score }} points and unlock your resource.</p></div>
 @endif
-<p class="mt-8 text-center text-[11px] font-bold uppercase tracking-widest text-slate-400">Follow the official accounts above, then return here to confirm.</p>
+<p class="mt-8 text-center text-[11px] font-bold uppercase tracking-widest text-slate-400">Your progress is waiting here. Follow the account, then come back and confirm.</p>
 </div>
 </main>
 
@@ -70,7 +81,6 @@
     function androidIntent(url, platform) {
         var parsed;
         try { parsed = new URL(url); } catch (e) { return null; }
-
         var packages = {
             instagram: 'com.instagram.android',
             facebook: 'com.facebook.katana',
@@ -79,7 +89,6 @@
         };
         var pkg = packages[platform];
         if (!pkg || parsed.protocol !== 'https:') return null;
-
         var fallback = encodeURIComponent(url);
         return 'intent://' + parsed.host + parsed.pathname + parsed.search +
             '#Intent;scheme=https;package=' + pkg +
@@ -94,18 +103,25 @@
         link.addEventListener('click', function (event) {
             enableClaim(key);
 
-            // Android: explicitly request the native app and give Chrome an
-            // official web fallback if that app is not installed.
+            // On Android, the new tab created by target=_blank remains the
+            // campaign's return point while the intent hands the user to the
+            // installed native app. If the app is unavailable, Android uses
+            // the supplied HTTPS fallback in that new tab.
             if (/Android/i.test(navigator.userAgent)) {
                 var intent = androidIntent(link.href, platform);
                 if (intent) {
                     event.preventDefault();
-                    window.location.href = intent;
+                    var fallbackTab = window.open('about:blank', '_blank');
+                    if (fallbackTab) {
+                        fallbackTab.location.href = intent;
+                    } else {
+                        window.location.href = intent;
+                    }
                 }
             }
-            // iOS and desktop intentionally keep the normal HTTPS URL.
-            // iOS Universal Links can hand it to the installed native app;
-            // without the app, the same URL remains the web fallback.
+            // iOS and desktop use the normal new-tab HTTPS link. iOS may hand
+            // that URL to the installed app through Universal Links; otherwise
+            // the profile remains available in the newly opened browser tab.
         });
     });
 })();
