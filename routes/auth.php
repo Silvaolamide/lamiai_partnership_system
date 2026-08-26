@@ -10,6 +10,8 @@ use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\VerifyEmailController;
+use App\Http\Controllers\Admin\CommissionController;
+use App\Http\Controllers\Admin\PayoutController as AdminPayoutController;
 use App\Http\Controllers\AdminMarketingCampaignController;
 use App\Http\Controllers\BusinessMarketingCampaignController;
 use App\Http\Controllers\MarketerRecruitmentController;
@@ -65,4 +67,21 @@ Route::middleware(['auth', 'role:super_admin'])->prefix('admin')->group(function
     Route::get('/marketing-campaigns', [AdminMarketingCampaignController::class, 'index'])->name('admin.marketing-campaigns.index');
     Route::get('/marketing-campaigns/{campaign}/leads', [AdminMarketingCampaignController::class, 'leads'])->name('admin.marketing-campaigns.leads');
     Route::get('/marketing-campaigns/{campaign}/download', [AdminMarketingCampaignController::class, 'download'])->name('admin.marketing-campaigns.download');
+
+    // Commission management. These routes are intentionally kept in the admin
+    // route group so they are protected by auth + super_admin middleware.
+    Route::get('/commissions', [CommissionController::class, 'index'])->name('admin.commissions.index');
+    Route::get('/commissions/{commission}', [CommissionController::class, 'show'])->name('admin.commissions.show');
+    Route::patch('/commissions/{commission}/approve', [CommissionController::class, 'approve'])->name('admin.commissions.approve');
+    Route::patch('/commissions/{commission}/mark-payable', [CommissionController::class, 'markPayable'])->name('admin.commissions.mark-payable');
+    Route::patch('/commissions/{commission}/reverse', [CommissionController::class, 'reverse'])->name('admin.commissions.reverse');
+    Route::post('/commissions/bulk-approve', [CommissionController::class, 'bulkApprove'])->name('admin.commissions.bulk-approve');
+    Route::post('/commissions/bulk-mark-payable', [CommissionController::class, 'bulkMarkPayable'])->name('admin.commissions.bulk-mark-payable');
+
+    // Admin payout management.
+    Route::get('/payouts', [AdminPayoutController::class, 'index'])->name('admin.payouts.index');
+    Route::get('/payouts/{payout}', [AdminPayoutController::class, 'show'])->name('admin.payouts.show');
+    Route::patch('/payouts/{payout}/approve', [AdminPayoutController::class, 'approve'])->name('admin.payouts.approve');
+    Route::patch('/payouts/{payout}/reject', [AdminPayoutController::class, 'reject'])->name('admin.payouts.reject');
+    Route::patch('/payouts/{payout}/process', [AdminPayoutController::class, 'process'])->name('admin.payouts.process');
 });
