@@ -12,5 +12,5 @@ Route::get('/social-follow/{slug}', [SocialFollowController::class, 'show'])
 Route::post('/social-follow/{slug}/claim/{socialAccount}', [SocialFollowController::class, 'claim'])
     ->name('social-follow.claim');
 
-Route::get('/social-follow/{slug}/unlock', [SocialFollowController::class, 'unlock'])
+Route::post('/social-follow/{slug}/unlock', [SocialFollowController::class, 'unlock'])
     ->name('social-follow.unlock');
